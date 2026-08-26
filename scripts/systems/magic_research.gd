@@ -44,6 +44,7 @@ var buttons: Array[Button] = []
 var current_field := "Healing"
 var requirements: Dictionary = {}
 var japanese_ui := true
+var selected_slot := -1
 
 var title_label: Label
 var field_label: Label
@@ -54,6 +55,9 @@ var circle_stage: Control
 var circle_visual: Control
 var attempt_button: Button
 var reset_button: Button
+var glyph_picker: PanelContainer
+var glyph_picker_title: Label
+var glyph_picker_buttons: Array[Button] = []
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -115,16 +119,13 @@ func _ready() -> void:
     for i in range(9):
         glyph_states.append(0)
         var button := Button.new()
-        button.z_index = 2
-        button.custom_minimum_size = Vector2(76, 76)
-        button.size = Vector2(76, 76)
+        button.z_index = 4
+        button.custom_minimum_size = Vector2(82, 82)
+        button.size = Vector2(82, 82)
         button.text = ""
         button.focus_mode = Control.FOCUS_NONE
-        button.add_theme_stylebox_override("normal", _glyph_style(i, false))
-        button.add_theme_stylebox_override("hover", _glyph_style(i, true))
-        button.add_theme_stylebox_override("pressed", _glyph_style(i, true))
         button.tooltip_text = _slot_tooltip(i)
-        button.pressed.connect(_cycle_glyph.bind(i))
+        button.pressed.connect(_open_glyph_picker.bind(i))
         buttons.append(button)
         circle_stage.add_child(button)
 
@@ -180,14 +181,64 @@ func _ready() -> void:
     status_label.add_theme_font_size_override("font_size", 16)
     root_box.add_child(status_label)
 
+    _build_glyph_picker()
     _make_challenge()
     _refresh_all()
+
+func _build_glyph_picker() -> void:
+    glyph_picker = PanelContainer.new()
+    glyph_picker.visible = false
+    glyph_picker.z_index = 30
+    glyph_picker.anchor_left = 0.03
+    glyph_picker.anchor_right = 0.97
+    glyph_picker.anchor_top = 1.0
+    glyph_picker.anchor_bottom = 1.0
+    glyph_picker.offset_top = -158.0
+    glyph_picker.offset_bottom = -10.0
+    glyph_picker.add_theme_stylebox_override("panel", _panel_style(Color("17152f"), Color(COLOR_GOLD, 0.82), 18, 2))
+    add_child(glyph_picker)
+
+    var margin := MarginContainer.new()
+    margin.add_theme_constant_override("margin_left", 14)
+    margin.add_theme_constant_override("margin_right", 14)
+    margin.add_theme_constant_override("margin_top", 10)
+    margin.add_theme_constant_override("margin_bottom", 12)
+    glyph_picker.add_child(margin)
+
+    var box := VBoxContainer.new()
+    box.add_theme_constant_override("separation", 8)
+    margin.add_child(box)
+
+    glyph_picker_title = Label.new()
+    glyph_picker_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    glyph_picker_title.add_theme_color_override("font_color", COLOR_GOLD)
+    glyph_picker_title.add_theme_font_size_override("font_size", 17)
+    box.add_child(glyph_picker_title)
+
+    var row := HBoxContainer.new()
+    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    row.add_theme_constant_override("separation", 7)
+    box.add_child(row)
+
+    for state in range(GLYPH_NAMES.size()):
+        var option := Button.new()
+        option.text = _glyph_name(state)
+        option.custom_minimum_size = Vector2(92, 58)
+        option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+        option.focus_mode = Control.FOCUS_NONE
+        option.add_theme_font_size_override("font_size", 15)
+        option.pressed.connect(_choose_glyph.bind(state))
+        glyph_picker_buttons.append(option)
+        row.add_child(option)
 
 func _unhandled_input(event: InputEvent) -> void:
     if not visible:
         return
     if event is InputEventKey and event.pressed and not event.echo:
-        if event.keycode == KEY_R:
+        if event.keycode == KEY_ESCAPE and glyph_picker != null and glyph_picker.visible:
+            _close_glyph_picker()
+            get_viewport().set_input_as_handled()
+        elif event.keycode == KEY_R:
             _reset_circle()
             get_viewport().set_input_as_handled()
         elif event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
@@ -259,13 +310,38 @@ func get_circle_profile() -> Dictionary:
         "aligned": aligned,
     }
 
-func _cycle_glyph(index: int) -> void:
-    glyph_states[index] = (glyph_states[index] + 1) % GLYPH_NAMES.size()
+func _open_glyph_picker(index: int) -> void:
+    selected_slot = index
+    glyph_picker.visible = true
+    if index == 4:
+        glyph_picker_title.text = _ui("中心核の紋章を選ぶ", "SELECT CORE GLYPH")
+    elif _is_corner(index):
+        glyph_picker_title.text = _ui("境界紋を選ぶ", "SELECT BOUNDARY GLYPH")
+    else:
+        glyph_picker_title.text = _ui("導流紋を選ぶ", "SELECT FLOW GLYPH")
+    status_label.text = _slot_tooltip(index)
+    _refresh_slot_styles()
+    _refresh_picker_styles()
+
+func _choose_glyph(state: int) -> void:
+    if selected_slot < 0 or selected_slot >= glyph_states.size():
+        return
+    glyph_states[selected_slot] = state
+    selected_slot = -1
+    glyph_picker.visible = false
     status_label.text = ""
     _refresh_profile()
     _sync_circle_visual()
+    _refresh_slot_styles()
+
+func _close_glyph_picker() -> void:
+    selected_slot = -1
+    if glyph_picker != null:
+        glyph_picker.visible = false
+    _refresh_slot_styles()
 
 func _attempt_breakthrough() -> void:
+    _close_glyph_picker()
     var profile: Dictionary = get_circle_profile()
     var failures: Array[String] = _failure_reasons(profile)
     if failures.is_empty():
@@ -350,6 +426,7 @@ func _refresh_all() -> void:
         ]
     _refresh_profile()
     _sync_circle_visual()
+    _refresh_slot_styles()
 
 func _refresh_profile() -> void:
     var profile: Dictionary = get_circle_profile()
@@ -368,6 +445,9 @@ func _refresh_profile() -> void:
     ]
 
 func _reset_circle() -> void:
+    selected_slot = -1
+    if glyph_picker != null:
+        glyph_picker.visible = false
     for i in range(glyph_states.size()):
         glyph_states[i] = 0
     if status_label != null:
@@ -375,6 +455,7 @@ func _reset_circle() -> void:
     if profile_label != null:
         _refresh_profile()
     _sync_circle_visual()
+    _refresh_slot_styles()
 
 func _sync_circle_visual() -> void:
     if circle_visual != null:
@@ -387,6 +468,25 @@ func _layout_glyph_buttons() -> void:
         var center: Vector2 = circle_visual.get_slot_position(i)
         buttons[i].position = center - buttons[i].size * 0.5
 
+func _refresh_slot_styles() -> void:
+    for i in range(buttons.size()):
+        var selected: bool = i == selected_slot
+        buttons[i].add_theme_stylebox_override("normal", _glyph_style(i, false, selected))
+        buttons[i].add_theme_stylebox_override("hover", _glyph_style(i, true, selected))
+        buttons[i].add_theme_stylebox_override("pressed", _glyph_style(i, true, selected))
+
+func _refresh_picker_styles() -> void:
+    if selected_slot < 0 or selected_slot >= glyph_states.size():
+        return
+    var current_state: int = glyph_states[selected_slot]
+    for state in range(glyph_picker_buttons.size()):
+        var active: bool = state == current_state
+        var option: Button = glyph_picker_buttons[state]
+        option.add_theme_stylebox_override("normal", _picker_style(active, false))
+        option.add_theme_stylebox_override("hover", _picker_style(active, true))
+        option.add_theme_stylebox_override("pressed", _picker_style(true, true))
+        option.add_theme_color_override("font_color", COLOR_GOLD if active else COLOR_INK)
+
 func _is_corner(index: int) -> bool:
     return index == 0 or index == 2 or index == 6 or index == 8
 
@@ -396,6 +496,11 @@ func _slot_tooltip(index: int) -> String:
     if _is_corner(index):
         return _ui("境界紋: 主に範囲と封じ込めを決める。", "Boundary: mainly controls range and containment.")
     return _ui("導流紋: 主に出力、持続、魔力流を決める。", "Flow: mainly controls power, duration and mana flow.")
+
+func _glyph_name(state: int) -> String:
+    if state < 0 or state >= GLYPH_NAMES.size():
+        return "?"
+    return str(GLYPH_JP[state]) if japanese_ui else str(GLYPH_NAMES[state]).to_upper()
 
 func _ui(japanese: String, english: String) -> String:
     return japanese if japanese_ui else english
@@ -421,14 +526,26 @@ func _panel_style(bg: Color, border: Color, radius: int, width: int) -> StyleBox
     style.content_margin_bottom = 7.0
     return style
 
-func _glyph_style(index: int, highlighted: bool) -> StyleBoxFlat:
+func _glyph_style(index: int, highlighted: bool, selected: bool = false) -> StyleBoxFlat:
     var role_color: Color = COLOR_GOLD if _is_corner(index) else COLOR_VIOLET
     if index == 4:
         role_color = Color("e9e5ff")
-    var bg: Color = Color("17152f") if not highlighted else Color("2d2454")
-    bg.a = 0.92
-    var border: Color = Color(role_color, 0.55 if not highlighted else 1.0)
-    var style := _panel_style(bg, border, 38, 2 if highlighted else 1)
-    style.shadow_color = Color(role_color, 0.18 if not highlighted else 0.34)
-    style.shadow_size = 10 if highlighted else 5
+    var bg: Color = Color("17152f")
+    if highlighted:
+        bg = Color("2d2454")
+    if selected:
+        bg = Color("38295f")
+    bg.a = 0.94
+    var border: Color = Color(role_color, 1.0 if selected or highlighted else 0.55)
+    var width: int = 3 if selected else (2 if highlighted else 1)
+    var style := _panel_style(bg, border, 41, width)
+    style.shadow_color = Color(role_color, 0.40 if selected else (0.34 if highlighted else 0.18))
+    style.shadow_size = 12 if selected else (10 if highlighted else 5)
     return style
+
+func _picker_style(active: bool, highlighted: bool) -> StyleBoxFlat:
+    var bg: Color = Color("2a2148") if active else Color("101024")
+    if highlighted:
+        bg = Color("34275b")
+    var border: Color = Color(COLOR_GOLD, 0.95) if active else Color(COLOR_VIOLET, 0.48 if not highlighted else 0.82)
+    return _panel_style(bg, border, 12, 2 if active or highlighted else 1)
