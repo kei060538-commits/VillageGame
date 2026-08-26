@@ -24,8 +24,11 @@ This file records provisional choices made to get the game into a playable and v
 - The center glyph selects the magical field, corner glyphs mainly shape range/containment, and edge glyphs mainly control power, duration, and mana flow.
 - A research challenge specifies minimum power/range/stability/duration and a maximum mana cost. Multiple circle layouts can satisfy the same challenge.
 - Matching glyphs across opposite slots create a stability/efficiency bonus and are visualized as brighter chords.
-- Magic fields currently rotate through Healing, Agriculture, Construction, Weather, and Combat.
-- A successful research session advances one field and skips 10–30 in-game years depending on total research level.
+- Magic fields are Healing, Agriculture, Construction, Weather, and Combat.
+- Research fields are now selected from village conditions instead of rotating blindly. Disease drives Healing, food shortages drive Agriculture/Weather, and monster pressure alternates between Combat and Construction as the village gains defensive knowledge. Quiet periods request whichever branch of village magic is lagging behind.
+- The first prototype request comes from the clinic and establishes basic Healing, preserving a readable onboarding path before crisis-driven requests take over.
+- The request card names who is asking and why, such as a clinic request, hunter warning, mayor request, or farm request; severity changes the request text accent.
+- A successful research session advances one field and skips 10–30 in-game years depending on total research level. After the time skip, the new village state selects the next request.
 - A success opens a return-to-village card rather than immediately returning to a walkable map.
 - Mobile input no longer requires repeatedly cycling a slot through every glyph. Tapping a slot highlights it and opens a large six-choice glyph palette; choosing a glyph applies it and closes the palette. The picker labels the selected role as core, boundary, or flow so the geometry begins to teach its own grammar.
 
@@ -40,7 +43,7 @@ This file records provisional choices made to get the game into a playable and v
 
 ## Next visual/gameplay systems
 1. Add drag/rotate/connect interactions on top of the new explicit glyph picker so spatial arrangement matters as much as glyph choice.
-2. Create proper puzzle objective cards generated from actual village crises and requests.
+2. Turn village requests into multi-step research stories with named requesters, consequences, and success/failure follow-ups.
 3. Add a title screen, logo treatment, chapter/era transitions, and stronger breakthrough/return animation.
 4. Integrate final protagonist portrait/pixel art only after the intended public asset is approved.
 5. Add a browsable multi-century village-history archive with named descendants and remembered relationships.
