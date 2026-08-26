@@ -65,7 +65,7 @@ var challenge_label: Label
 var profile_label: Label
 var status_label: Label
 var circle_stage: Control
-var circle_visual: Control
+var circle_visual
 var attempt_button: Button
 var reset_button: Button
 var glyph_picker: PanelContainer
