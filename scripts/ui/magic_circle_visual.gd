@@ -1,5 +1,7 @@
 extends Control
 
+const BREAKTHROUGH_OVERLAY := preload("res://scripts/ui/breakthrough_overlay.gd")
+
 const VIOLET := Color("9a61ff")
 const VIOLET_SOFT := Color("7040b8")
 const GOLD := Color("dcb56f")
@@ -36,6 +38,35 @@ func set_mana_drag_preview(source: int, point: Vector2, active: bool) -> void:
 
 func celebrate() -> void:
     celebration = 1.0
+    _spawn_breakthrough_overlay()
+
+func _spawn_breakthrough_overlay() -> void:
+    if not is_inside_tree() or size.x <= 0.0 or size.y <= 0.0:
+        return
+
+    var transform := get_global_transform_with_canvas()
+    var screen_center: Vector2 = transform * (size * 0.5)
+    var segments: Array[Vector2] = []
+    for link in connections:
+        var a: int = link.x
+        var b: int = link.y
+        if a < 0 or a >= 9 or b < 0 or b >= 9:
+            continue
+        if a >= glyph_states.size() or b >= glyph_states.size():
+            continue
+        if glyph_states[a] <= 0 or glyph_states[b] <= 0:
+            continue
+        segments.append(transform * get_slot_position(a))
+        segments.append(transform * get_slot_position(b))
+
+    var layer := CanvasLayer.new()
+    layer.layer = 120
+    get_tree().root.add_child(layer)
+
+    var overlay := BREAKTHROUGH_OVERLAY.new()
+    layer.add_child(overlay)
+    overlay.setup(screen_center, segments, _field_color(current_field))
+    overlay.finished.connect(layer.queue_free)
 
 func get_slot_position(index: int) -> Vector2:
     var c: Vector2 = size * 0.5
@@ -143,7 +174,20 @@ func _draw() -> void:
 
     if celebration > 0.0:
         var burst: float = celebration
-        draw_arc(c, radius * (1.0 + (1.0 - burst) * 0.33), 0, TAU, 128, Color(WHITE_GLOW, burst * 0.72), 4.0, true)
+        for ring_index in range(3):
+            var offset: float = float(ring_index) * 0.12
+            var phase: float = clampf(1.0 - burst - offset, 0.0, 1.0)
+            if phase > 0.0:
+                draw_arc(
+                    c,
+                    radius * (1.0 + phase * (0.34 + float(ring_index) * 0.08)),
+                    0,
+                    TAU,
+                    128,
+                    Color(WHITE_GLOW, (1.0 - phase) * burst * (0.82 - float(ring_index) * 0.16)),
+                    5.0 - float(ring_index),
+                    true
+                )
 
 func _draw_connections(field_color: Color, pulse: float) -> void:
     for index in range(connections.size()):
@@ -161,25 +205,27 @@ func _draw_connections(field_color: Color, pulse: float) -> void:
         var finish := get_slot_position(b)
         var same_glyph: bool = glyph_states[a] == glyph_states[b]
         var color: Color = GOLD if same_glyph else field_color
-        draw_line(start, finish, Color(color, 0.12), 9.0, true)
-        draw_line(start, finish, Color(color, 0.62 + pulse * 0.20), 2.8, true)
+        var celebration_boost: float = celebration * 0.30
+        draw_line(start, finish, Color(color, 0.12 + celebration_boost), 9.0 + celebration * 8.0, true)
+        draw_line(start, finish, Color(color.lerp(WHITE_GLOW, celebration * 0.82), 0.62 + pulse * 0.20 + celebration * 0.12), 2.8 + celebration * 2.8, true)
 
-        var flow: float = fmod(time * 0.27 + float(index) * 0.19, 1.0)
+        var flow_speed: float = 0.27 + celebration * 1.35
+        var flow: float = fmod(time * flow_speed + float(index) * 0.19, 1.0)
         var bead: Vector2 = start.lerp(finish, flow)
-        draw_circle(bead, 4.2 + pulse * 1.1, Color(WHITE_GLOW, 0.88))
+        draw_circle(bead, 4.2 + pulse * 1.1 + celebration * 4.0, Color(WHITE_GLOW, 0.88))
 
 func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float, pulse: float, rotation_quarters: int) -> void:
     if state <= 0:
         draw_circle(center, 3.0 + pulse, Color(color, 0.88))
         return
 
-    var glow: Color = Color(color, 0.20)
+    var glow: Color = Color(color, 0.20 + celebration * 0.22)
     var rotation: float = float(rotation_quarters % 4) * PI * 0.5
 
     match state:
         1:
-            draw_arc(center, glyph_radius, 0, TAU, 48, glow, 8.0, true)
-            draw_arc(center, glyph_radius, 0, TAU, 48, color, 3.0, true)
+            draw_arc(center, glyph_radius, 0, TAU, 48, glow, 8.0 + celebration * 5.0, true)
+            draw_arc(center, glyph_radius, 0, TAU, 48, color.lerp(WHITE_GLOW, celebration * 0.65), 3.0 + celebration * 2.0, true)
         2:
             var tri := _rotated_poly(center, [
                 Vector2(0, -glyph_radius),
@@ -187,8 +233,8 @@ func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float,
                 Vector2(-glyph_radius * 0.90, glyph_radius * 0.72),
                 Vector2(0, -glyph_radius),
             ], rotation)
-            draw_polyline(tri, glow, 8.0, true)
-            draw_polyline(tri, color, 3.0, true)
+            draw_polyline(tri, glow, 8.0 + celebration * 5.0, true)
+            draw_polyline(tri, color.lerp(WHITE_GLOW, celebration * 0.65), 3.0 + celebration * 2.0, true)
         3:
             var sq := _rotated_poly(center, [
                 Vector2(-glyph_radius * 0.78, -glyph_radius * 0.78),
@@ -197,8 +243,8 @@ func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float,
                 Vector2(-glyph_radius * 0.78, glyph_radius * 0.78),
                 Vector2(-glyph_radius * 0.78, -glyph_radius * 0.78),
             ], rotation)
-            draw_polyline(sq, glow, 8.0, true)
-            draw_polyline(sq, color, 3.0, true)
+            draw_polyline(sq, glow, 8.0 + celebration * 5.0, true)
+            draw_polyline(sq, color.lerp(WHITE_GLOW, celebration * 0.65), 3.0 + celebration * 2.0, true)
         4:
             var dia := _rotated_poly(center, [
                 Vector2(0, -glyph_radius),
@@ -207,8 +253,8 @@ func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float,
                 Vector2(-glyph_radius, 0),
                 Vector2(0, -glyph_radius),
             ], rotation)
-            draw_polyline(dia, glow, 8.0, true)
-            draw_polyline(dia, color, 3.0, true)
+            draw_polyline(dia, glow, 8.0 + celebration * 5.0, true)
+            draw_polyline(dia, color.lerp(WHITE_GLOW, celebration * 0.65), 3.0 + celebration * 2.0, true)
         5:
             var local_star: Array[Vector2] = []
             for i in range(8):
@@ -217,8 +263,8 @@ func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float,
                 local_star.append(Vector2(cos(angle), sin(angle)) * r)
             local_star.append(local_star[0])
             var star := _rotated_poly(center, local_star, rotation)
-            draw_polyline(star, glow, 8.0, true)
-            draw_polyline(star, color, 3.0, true)
+            draw_polyline(star, glow, 8.0 + celebration * 5.0, true)
+            draw_polyline(star, color.lerp(WHITE_GLOW, celebration * 0.65), 3.0 + celebration * 2.0, true)
 
     # A small directional notch makes rotation visible even for rotationally symmetric glyphs.
     var direction: Vector2 = Vector2(0, -glyph_radius).rotated(rotation)
