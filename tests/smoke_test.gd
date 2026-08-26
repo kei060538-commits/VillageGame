@@ -17,6 +17,27 @@ func _run() -> void:
         _fail("global fallback font was not installed")
         return
 
+    var configured_main: String = str(ProjectSettings.get_setting("application/run/main_scene", ""))
+    if not configured_main.contains("title.tscn"):
+        _fail("portrait build should launch through the title scene")
+        return
+
+    var title_scene := load("res://scenes/title.tscn") as PackedScene
+    if title_scene == null:
+        _fail("title scene could not be loaded")
+        return
+    var title_instance = title_scene.instantiate()
+    root.add_child(title_instance)
+    await process_frame
+    if title_instance.get("start_button") == null:
+        _fail("title screen should create its start button")
+        return
+    if title_instance.get("decorative_circle") == null:
+        _fail("title screen should display a decorative magic circle")
+        return
+    title_instance.queue_free()
+    await process_frame
+
     var packed_scene := load("res://scenes/main.tscn") as PackedScene
     if packed_scene == null:
         _fail("main scene could not be loaded")
@@ -148,7 +169,7 @@ func _run() -> void:
         _fail("farmers should learn agriculture magic when village knowledge exists")
         return
 
-    print("SMOKE TEST PASS: font bootstrap, village requests, glyph picker, rotation, mana links, relationships, pressures, and semantic research loaded")
+    print("SMOKE TEST PASS: title, font bootstrap, village requests, glyph picker, rotation, mana links, relationships, pressures, and semantic research loaded")
     instance.queue_free()
     quit(0)
 
