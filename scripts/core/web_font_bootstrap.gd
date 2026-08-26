@@ -2,21 +2,50 @@ extends Node
 
 signal japanese_font_ready
 
-const BUNDLED_WEB_FONT := "res://art/fonts/NotoSansJP-Variable.ttf"
+const BUNDLED_WEB_FONT := "res://art/fonts/ZenKakuGothicNew-Regular.ttf"
 const REQUIRED_JAPANESE_CODEPOINTS := [0x65E5, 0x3042, 0x9B54] # 日, あ, 魔
 
 var japanese_ready := false
 var _installed_font: Font
+var _ui_theme: Theme
 
 func _ready() -> void:
     if OS.has_feature("web"):
         japanese_ready = _install_bundled_web_font()
         if not japanese_ready:
             push_warning("Bundled Japanese Web font is unavailable or invalid; keeping the Web UI in English.")
-        return
+            return
+    else:
+        _install_native_font()
+        japanese_ready = true
 
-    _install_native_font()
-    japanese_ready = true
+    _build_ui_theme()
+    japanese_font_ready.emit()
+
+func get_ui_font() -> Font:
+    return _installed_font
+
+func get_ui_theme() -> Theme:
+    if _ui_theme == null and _installed_font != null:
+        _build_ui_theme()
+    return _ui_theme
+
+func apply_to(root_control: Control, force_text_controls: bool = true) -> bool:
+    if root_control == null or _installed_font == null:
+        return false
+
+    if _ui_theme == null:
+        _build_ui_theme()
+    if _ui_theme == null:
+        return false
+
+    # ThemeDB.fallback_font was not sufficient on iPhone Safari: the engine's
+    # default font still produced tofu. Assigning a Theme.default_font makes
+    # the bundled Japanese font the primary font for every descendant Control.
+    root_control.theme = _ui_theme
+    if force_text_controls:
+        _apply_font_overrides(root_control)
+    return true
 
 func _install_bundled_web_font() -> bool:
     if not ResourceLoader.exists(BUNDLED_WEB_FONT):
@@ -35,7 +64,6 @@ func _install_bundled_web_font() -> bool:
 
     _installed_font = font
     ThemeDB.fallback_font = font
-    japanese_font_ready.emit()
     return true
 
 func _install_native_font() -> void:
@@ -51,3 +79,24 @@ func _install_native_font() -> void:
     font.allow_system_fallback = true
     _installed_font = font
     ThemeDB.fallback_font = font
+
+func _build_ui_theme() -> void:
+    if _installed_font == null:
+        _ui_theme = null
+        return
+
+    var theme := Theme.new()
+    theme.default_font = _installed_font
+    theme.default_font_size = 16
+    _ui_theme = theme
+
+func _apply_font_overrides(node: Node) -> void:
+    if node is RichTextLabel:
+        var rich_text := node as RichTextLabel
+        for theme_name in ["normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font"]:
+            rich_text.add_theme_font_override(theme_name, _installed_font)
+    elif node is Label or node is Button or node is LineEdit or node is TextEdit or node is ItemList or node is Tree:
+        (node as Control).add_theme_font_override("font", _installed_font)
+
+    for child in node.get_children():
+        _apply_font_overrides(child)
