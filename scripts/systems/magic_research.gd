@@ -498,7 +498,7 @@ func _handle_pointer_button(viewport_position: Vector2, pressed: bool) -> void:
     drag_source = -1
     drag_active = false
     if circle_visual != null:
-        circle_visual.set_drag_preview(-1, Vector2.ZERO, false)
+        circle_visual.set_mana_drag_preview(-1, Vector2.ZERO, false)
 
 func _handle_pointer_motion(viewport_position: Vector2) -> void:
     if drag_source < 0:
@@ -511,7 +511,7 @@ func _handle_pointer_motion(viewport_position: Vector2) -> void:
 
     if drag_active:
         if circle_visual != null:
-            circle_visual.set_drag_preview(drag_source, drag_pointer, true)
+            circle_visual.set_mana_drag_preview(drag_source, drag_pointer, true)
         get_viewport().set_input_as_handled()
 
 func _toggle_connection(first: int, second: int) -> void:
