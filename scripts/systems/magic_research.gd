@@ -7,6 +7,8 @@ const MAGIC_VISUAL := preload("res://scripts/ui/magic_circle_visual.gd")
 
 const GLYPH_NAMES := ["Empty", "Circle", "Triangle", "Square", "Diamond", "Star"]
 const GLYPH_JP := ["空", "円", "三角", "四角", "菱形", "星"]
+const ORIENTATION_NAMES := ["OUT", "CLOCKWISE", "IN", "COUNTER"]
+const ORIENTATION_JP := ["外向", "順流", "内向", "逆流"]
 const FIELDS := ["Healing", "Agriculture", "Construction", "Weather", "Combat"]
 const FIELD_CORE := {
     "Healing": 1,
@@ -37,15 +39,24 @@ const COLOR_VIOLET := Color("9a61ff")
 const COLOR_PANEL := Color("111126")
 const COLOR_PANEL_ALT := Color("171631")
 const COLOR_BORDER := Color("4b3d6c")
+const DRAG_THRESHOLD := 18.0
+const SLOT_HIT_RADIUS := 52.0
 
 var research_level := 0
 var glyph_states: Array[int] = []
+var glyph_rotations: Array[int] = []
+var connections: Array[Vector2i] = []
 var buttons: Array[Button] = []
 var current_field := "Healing"
 var requirements: Dictionary = {}
 var village_request: Dictionary = {}
 var japanese_ui := true
 var selected_slot := -1
+
+var drag_source := -1
+var drag_active := false
+var drag_start := Vector2.ZERO
+var drag_pointer := Vector2.ZERO
 
 var title_label: Label
 var field_label: Label
@@ -60,6 +71,7 @@ var reset_button: Button
 var glyph_picker: PanelContainer
 var glyph_picker_title: Label
 var glyph_picker_buttons: Array[Button] = []
+var rotation_label: Label
 
 func _ready() -> void:
     process_mode = Node.PROCESS_MODE_ALWAYS
@@ -96,7 +108,7 @@ func _ready() -> void:
     root_box.add_child(field_label)
 
     var challenge_card := PanelContainer.new()
-    challenge_card.custom_minimum_size.y = 114
+    challenge_card.custom_minimum_size.y = 126
     challenge_card.add_theme_stylebox_override("panel", _panel_style(COLOR_PANEL_ALT, Color(COLOR_VIOLET, 0.42), 14, 1))
     root_box.add_child(challenge_card)
 
@@ -132,6 +144,7 @@ func _ready() -> void:
 
     for i in range(9):
         glyph_states.append(0)
+        glyph_rotations.append(0)
         var button := Button.new()
         button.z_index = 4
         button.custom_minimum_size = Vector2(82, 82)
@@ -213,7 +226,7 @@ func _build_glyph_picker() -> void:
     glyph_picker.anchor_right = 0.97
     glyph_picker.anchor_top = 1.0
     glyph_picker.anchor_bottom = 1.0
-    glyph_picker.offset_top = -158.0
+    glyph_picker.offset_top = -224.0
     glyph_picker.offset_bottom = -10.0
     glyph_picker.add_theme_stylebox_override("panel", _panel_style(Color("17152f"), Color(COLOR_GOLD, 0.82), 18, 2))
     add_child(glyph_picker)
@@ -250,6 +263,48 @@ func _build_glyph_picker() -> void:
         option.pressed.connect(_choose_glyph.bind(state))
         glyph_picker_buttons.append(option)
         row.add_child(option)
+
+    var rotate_row := HBoxContainer.new()
+    rotate_row.alignment = BoxContainer.ALIGNMENT_CENTER
+    rotate_row.add_theme_constant_override("separation", 10)
+    box.add_child(rotate_row)
+
+    var rotate_left := Button.new()
+    rotate_left.text = _ui("左へ90°", "ROTATE -90")
+    rotate_left.custom_minimum_size = Vector2(160, 48)
+    rotate_left.focus_mode = Control.FOCUS_NONE
+    rotate_left.add_theme_font_size_override("font_size", 15)
+    rotate_left.pressed.connect(_rotate_selected.bind(-1))
+    rotate_row.add_child(rotate_left)
+
+    rotation_label = Label.new()
+    rotation_label.custom_minimum_size = Vector2(155, 48)
+    rotation_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    rotation_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    rotation_label.add_theme_color_override("font_color", COLOR_INK)
+    rotation_label.add_theme_font_size_override("font_size", 15)
+    rotate_row.add_child(rotation_label)
+
+    var rotate_right := Button.new()
+    rotate_right.text = _ui("右へ90°", "ROTATE +90")
+    rotate_right.custom_minimum_size = Vector2(160, 48)
+    rotate_right.focus_mode = Control.FOCUS_NONE
+    rotate_right.add_theme_font_size_override("font_size", 15)
+    rotate_right.pressed.connect(_rotate_selected.bind(1))
+    rotate_row.add_child(rotate_right)
+
+func _input(event: InputEvent) -> void:
+    if not visible or circle_stage == null:
+        return
+
+    if event is InputEventScreenTouch:
+        _handle_pointer_button(event.position, event.pressed)
+    elif event is InputEventScreenDrag:
+        _handle_pointer_motion(event.position)
+    elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+        _handle_pointer_button(event.position, event.pressed)
+    elif event is InputEventMouseMotion and drag_source >= 0:
+        _handle_pointer_motion(event.position)
 
 func _unhandled_input(event: InputEvent) -> void:
     if not visible:
@@ -307,14 +362,43 @@ func get_circle_profile() -> Dictionary:
             stability += int(GLYPH_STABILITY[state])
             efficiency += int(GLYPH_EFFICIENCY[state])
 
-    var opposite_pairs: Array[Array] = [[0, 8], [2, 6], [1, 7], [3, 5]]
-    for pair in opposite_pairs:
-        var first_index: int = int(pair[0])
-        var second_index: int = int(pair[1])
-        var first_state: int = glyph_states[first_index]
-        if first_state > 0 and first_state == glyph_states[second_index]:
-            stability += 3
+        var orientation: int = glyph_rotations[i] % 4
+        match orientation:
+            0:
+                reach += 1
+            1:
+                duration += 1
+            2:
+                stability += 1
+                efficiency += 1
+            3:
+                power += 1
+
+    var active_links := 0
+    for link in connections:
+        var a: int = link.x
+        var b: int = link.y
+        if a < 0 or b < 0 or a >= glyph_states.size() or b >= glyph_states.size():
+            continue
+        if glyph_states[a] <= 0 or glyph_states[b] <= 0:
+            continue
+
+        active_links += 1
+        raw_cost += 1
+        if a == 4 or b == 4:
+            power += 2
+            stability += 1
+        else:
+            duration += 1
+
+        if glyph_states[a] == glyph_states[b]:
+            stability += 2
             efficiency += 1
+        else:
+            power += 1
+
+        if _are_opposite(a, b):
+            reach += 1
 
     var mana_cost: int = maxi(1, raw_cost - efficiency)
     var expected_core: int = int(FIELD_CORE.get(current_field, 0))
@@ -327,6 +411,7 @@ func get_circle_profile() -> Dictionary:
         "duration": duration,
         "mana_cost": mana_cost,
         "active_glyphs": active_glyphs,
+        "links": active_links,
         "aligned": aligned,
     }
 
@@ -346,10 +431,30 @@ func _open_glyph_picker(index: int) -> void:
 func _choose_glyph(state: int) -> void:
     if selected_slot < 0 or selected_slot >= glyph_states.size():
         return
-    glyph_states[selected_slot] = state
+    var slot: int = selected_slot
+    glyph_states[slot] = state
+    if state <= 0:
+        glyph_rotations[slot] = 0
+        _remove_connections_for_slot(slot)
     selected_slot = -1
     glyph_picker.visible = false
     status_label.text = ""
+    _refresh_profile()
+    _sync_circle_visual()
+    _refresh_slot_styles()
+
+func _rotate_selected(step: int) -> void:
+    if selected_slot < 0 or selected_slot >= glyph_states.size():
+        return
+    if glyph_states[selected_slot] <= 0:
+        status_label.text = _ui("先に紋章を置いてから回転させる。", "PLACE A GLYPH BEFORE ROTATING IT.")
+        return
+
+    var slot: int = selected_slot
+    glyph_rotations[slot] = (glyph_rotations[slot] + step + 4) % 4
+    selected_slot = -1
+    glyph_picker.visible = false
+    status_label.text = _ui("紋章の向きを変更した。", "GLYPH ORIENTATION CHANGED.")
     _refresh_profile()
     _sync_circle_visual()
     _refresh_slot_styles()
@@ -358,6 +463,75 @@ func _close_glyph_picker() -> void:
     selected_slot = -1
     if glyph_picker != null:
         glyph_picker.visible = false
+    _refresh_slot_styles()
+
+func _handle_pointer_button(viewport_position: Vector2, pressed: bool) -> void:
+    if pressed:
+        if glyph_picker != null and glyph_picker.visible:
+            return
+        var local: Vector2 = _circle_local_position(viewport_position)
+        if not Rect2(Vector2.ZERO, circle_stage.size).has_point(local):
+            drag_source = -1
+            return
+        var slot: int = _slot_at_local_position(local)
+        if slot >= 0 and glyph_states[slot] > 0:
+            drag_source = slot
+            drag_start = local
+            drag_pointer = local
+            drag_active = false
+        else:
+            drag_source = -1
+        return
+
+    if drag_source < 0:
+        return
+
+    var local: Vector2 = _circle_local_position(viewport_position)
+    var target: int = _slot_at_local_position(local)
+    if drag_active:
+        if target >= 0 and target != drag_source and glyph_states[target] > 0:
+            _toggle_connection(drag_source, target)
+        else:
+            status_label.text = _ui("接続をキャンセルした。", "LINK CANCELLED.")
+        get_viewport().set_input_as_handled()
+
+    drag_source = -1
+    drag_active = false
+    if circle_visual != null:
+        circle_visual.set_drag_preview(-1, Vector2.ZERO, false)
+
+func _handle_pointer_motion(viewport_position: Vector2) -> void:
+    if drag_source < 0:
+        return
+    var local: Vector2 = _circle_local_position(viewport_position)
+    drag_pointer = local
+    if not drag_active and drag_start.distance_to(local) >= DRAG_THRESHOLD:
+        drag_active = true
+        status_label.text = _ui("別の紋章まで指を運ぶと魔力線を接続する。", "DRAG TO ANOTHER GLYPH TO WIRE A MANA LINK.")
+
+    if drag_active:
+        if circle_visual != null:
+            circle_visual.set_drag_preview(drag_source, drag_pointer, true)
+        get_viewport().set_input_as_handled()
+
+func _toggle_connection(first: int, second: int) -> void:
+    if first == second:
+        return
+    if first < 0 or second < 0 or first >= glyph_states.size() or second >= glyph_states.size():
+        return
+    if glyph_states[first] <= 0 or glyph_states[second] <= 0:
+        return
+
+    var link := _normalized_link(first, second)
+    var index: int = connections.find(link)
+    if index >= 0:
+        connections.remove_at(index)
+        status_label.text = _ui("魔力線を解除した。", "MANA LINK REMOVED.")
+    else:
+        connections.append(link)
+        status_label.text = _ui("魔力線を接続した。", "MANA LINK CONNECTED.")
+    _refresh_profile()
+    _sync_circle_visual()
     _refresh_slot_styles()
 
 func _attempt_breakthrough() -> void:
@@ -398,6 +572,8 @@ func _failure_reasons(profile: Dictionary) -> Array[String]:
         failures.append(_ui("魔力消費過多", "MANA TOO HIGH"))
     if int(profile.get("active_glyphs", 0)) < int(requirements.get("min_glyphs", 0)):
         failures.append(_ui("術式未完成", "INCOMPLETE"))
+    if int(profile.get("links", 0)) < int(requirements.get("min_links", 0)):
+        failures.append(_ui("魔力線不足", "NOT ENOUGH LINKS"))
     return failures
 
 func _make_challenge() -> void:
@@ -412,15 +588,15 @@ func _make_challenge() -> void:
 
     match current_field:
         "Healing":
-            requirements = {"power": 6 + tier * 2, "range": 6 + tier, "stability": 12 + tier * 2, "duration": 4 + tier, "max_mana": 27 + tier * 2, "min_glyphs": 5}
+            requirements = {"power": 6 + tier * 2, "range": 6 + tier, "stability": 12 + tier * 2, "duration": 4 + tier, "max_mana": 27 + tier * 2, "min_glyphs": 5, "min_links": 2}
         "Agriculture":
-            requirements = {"power": 5 + tier, "range": 14 + tier * 2, "stability": 8 + tier * 2, "duration": 8 + tier, "max_mana": 29 + tier * 2, "min_glyphs": 6}
+            requirements = {"power": 5 + tier, "range": 14 + tier * 2, "stability": 8 + tier * 2, "duration": 8 + tier, "max_mana": 29 + tier * 2, "min_glyphs": 6, "min_links": 3}
         "Construction":
-            requirements = {"power": 7 + tier * 2, "range": 8 + tier, "stability": 15 + tier * 2, "duration": 6 + tier, "max_mana": 28 + tier * 2, "min_glyphs": 6}
+            requirements = {"power": 7 + tier * 2, "range": 8 + tier, "stability": 15 + tier * 2, "duration": 6 + tier, "max_mana": 28 + tier * 2, "min_glyphs": 6, "min_links": 3}
         "Weather":
-            requirements = {"power": 8 + tier * 2, "range": 16 + tier * 2, "stability": 7 + tier, "duration": 8 + tier * 2, "max_mana": 31 + tier * 2, "min_glyphs": 7}
+            requirements = {"power": 8 + tier * 2, "range": 16 + tier * 2, "stability": 7 + tier, "duration": 8 + tier * 2, "max_mana": 31 + tier * 2, "min_glyphs": 7, "min_links": 4}
         "Combat":
-            requirements = {"power": 15 + tier * 2, "range": 8 + tier, "stability": 5 + tier, "duration": 3 + tier, "max_mana": 33 + tier * 2, "min_glyphs": 6}
+            requirements = {"power": 15 + tier * 2, "range": 8 + tier, "stability": 5 + tier, "duration": 3 + tier, "max_mana": 33 + tier * 2, "min_glyphs": 6, "min_links": 3}
 
 func _refresh_all() -> void:
     if japanese_ui:
@@ -433,7 +609,7 @@ func _refresh_all() -> void:
     var core_index: int = int(FIELD_CORE.get(current_field, 0))
     var core_name: String = str(GLYPH_JP[core_index]) if japanese_ui else str(GLYPH_NAMES[core_index])
     if japanese_ui:
-        challenge_label.text = "中心核: %s    出力 >= %d    範囲 >= %d    安定 >= %d\n持続 >= %d    魔力 <= %d    使用紋章 >= %d" % [
+        challenge_label.text = "中心核: %s   出力 >= %d   範囲 >= %d   安定 >= %d\n持続 >= %d   魔力 <= %d   紋章 >= %d   導線 >= %d" % [
             core_name,
             int(requirements.get("power", 0)),
             int(requirements.get("range", 0)),
@@ -441,9 +617,10 @@ func _refresh_all() -> void:
             int(requirements.get("duration", 0)),
             int(requirements.get("max_mana", 0)),
             int(requirements.get("min_glyphs", 0)),
+            int(requirements.get("min_links", 0)),
         ]
     else:
-        challenge_label.text = "CORE: %s    P >= %d    R >= %d    S >= %d\nD >= %d    MANA <= %d    GLYPHS >= %d" % [
+        challenge_label.text = "CORE: %s   P >= %d   R >= %d   S >= %d\nD >= %d   MANA <= %d   GLYPHS >= %d   LINKS >= %d" % [
             core_name,
             int(requirements.get("power", 0)),
             int(requirements.get("range", 0)),
@@ -451,6 +628,7 @@ func _refresh_all() -> void:
             int(requirements.get("duration", 0)),
             int(requirements.get("max_mana", 0)),
             int(requirements.get("min_glyphs", 0)),
+            int(requirements.get("min_links", 0)),
         ]
     _refresh_profile()
     _sync_circle_visual()
@@ -485,23 +663,29 @@ func _refresh_profile() -> void:
         alignment_text = _ui("核一致", "CORE OK")
     else:
         alignment_text = _ui("核不一致", "CORE X")
-    profile_label.text = "P %02d   R %02d   S %02d   D %02d   M %02d   %s" % [
+    profile_label.text = "P %02d   R %02d   S %02d   D %02d   M %02d   L %02d   %s" % [
         int(profile.get("power", 0)),
         int(profile.get("range", 0)),
         int(profile.get("stability", 0)),
         int(profile.get("duration", 0)),
         int(profile.get("mana_cost", 0)),
+        int(profile.get("links", 0)),
         alignment_text,
     ]
 
 func _reset_circle() -> void:
     selected_slot = -1
+    drag_source = -1
+    drag_active = false
+    connections.clear()
     if glyph_picker != null:
         glyph_picker.visible = false
     for i in range(glyph_states.size()):
         glyph_states[i] = 0
+        glyph_rotations[i] = 0
     if status_label != null:
         status_label.add_theme_color_override("font_color", COLOR_MUTED)
+        status_label.text = ""
     if profile_label != null:
         _refresh_profile()
     _sync_circle_visual()
@@ -509,7 +693,7 @@ func _reset_circle() -> void:
 
 func _sync_circle_visual() -> void:
     if circle_visual != null:
-        circle_visual.set_state(glyph_states, current_field)
+        circle_visual.set_state(glyph_states, current_field, glyph_rotations, connections)
 
 func _layout_glyph_buttons() -> void:
     if circle_visual == null or buttons.size() != 9:
@@ -537,15 +721,59 @@ func _refresh_picker_styles() -> void:
         option.add_theme_stylebox_override("pressed", _picker_style(true, true))
         option.add_theme_color_override("font_color", COLOR_GOLD if active else COLOR_INK)
 
+    if rotation_label != null:
+        if current_state <= 0:
+            rotation_label.text = _ui("向き: --", "ORIENT: --")
+        else:
+            rotation_label.text = _ui(
+                "向き: %s" % ORIENTATION_JP[glyph_rotations[selected_slot] % 4],
+                "ORIENT: %s" % ORIENTATION_NAMES[glyph_rotations[selected_slot] % 4]
+            )
+
+func _circle_local_position(viewport_position: Vector2) -> Vector2:
+    return circle_stage.get_global_transform_with_canvas().affine_inverse() * viewport_position
+
+func _slot_at_local_position(local_position: Vector2) -> int:
+    if circle_visual == null:
+        return -1
+    var best := -1
+    var best_distance := SLOT_HIT_RADIUS
+    for i in range(9):
+        var distance: float = local_position.distance_to(circle_visual.get_slot_position(i))
+        if distance <= best_distance:
+            best = i
+            best_distance = distance
+    return best
+
+func _normalized_link(first: int, second: int) -> Vector2i:
+    return Vector2i(mini(first, second), maxi(first, second))
+
+func _remove_connections_for_slot(slot: int) -> void:
+    for index in range(connections.size() - 1, -1, -1):
+        var link: Vector2i = connections[index]
+        if link.x == slot or link.y == slot:
+            connections.remove_at(index)
+
+func _slot_connection_count(slot: int) -> int:
+    var count := 0
+    for link in connections:
+        if link.x == slot or link.y == slot:
+            count += 1
+    return count
+
+func _are_opposite(first: int, second: int) -> bool:
+    var link := _normalized_link(first, second)
+    return link == Vector2i(0, 8) or link == Vector2i(2, 6) or link == Vector2i(1, 7) or link == Vector2i(3, 5)
+
 func _is_corner(index: int) -> bool:
     return index == 0 or index == 2 or index == 6 or index == 8
 
 func _slot_tooltip(index: int) -> String:
     if index == 4:
-        return _ui("中心核: 魔法分野と主出力を決める。", "Core: sets the magic field and main output.")
+        return _ui("中心核: 魔法分野と主出力。回転で流れを調整し、他の紋章へドラッグして接続する。", "Core: magic field and main output. Rotate it or drag to another glyph to wire it.")
     if _is_corner(index):
-        return _ui("境界紋: 主に範囲と封じ込めを決める。", "Boundary: mainly controls range and containment.")
-    return _ui("導流紋: 主に出力、持続、魔力流を決める。", "Flow: mainly controls power, duration and mana flow.")
+        return _ui("境界紋: 主に範囲と封じ込め。回転と魔力線で性能が変わる。", "Boundary: mainly range and containment. Rotation and links change its behavior.")
+    return _ui("導流紋: 主に出力、持続、魔力流。別の紋章へドラッグして接続する。", "Flow: mainly power, duration and mana flow. Drag it to another glyph to connect.")
 
 func _glyph_name(state: int) -> String:
     if state < 0 or state >= GLYPH_NAMES.size():
@@ -586,11 +814,13 @@ func _glyph_style(index: int, highlighted: bool, selected: bool = false) -> Styl
     if selected:
         bg = Color("38295f")
     bg.a = 0.94
-    var border: Color = Color(role_color, 1.0 if selected or highlighted else 0.55)
-    var width: int = 3 if selected else (2 if highlighted else 1)
+    var linked: bool = _slot_connection_count(index) > 0
+    var border_alpha: float = 1.0 if selected or highlighted or linked else 0.55
+    var border: Color = Color(role_color, border_alpha)
+    var width: int = 3 if selected else (2 if highlighted or linked else 1)
     var style := _panel_style(bg, border, 41, width)
-    style.shadow_color = Color(role_color, 0.40 if selected else (0.34 if highlighted else 0.18))
-    style.shadow_size = 12 if selected else (10 if highlighted else 5)
+    style.shadow_color = Color(role_color, 0.40 if selected else (0.34 if highlighted or linked else 0.18))
+    style.shadow_size = 12 if selected else (10 if highlighted or linked else 5)
     return style
 
 func _picker_style(active: bool, highlighted: bool) -> StyleBoxFlat:
