@@ -7,18 +7,31 @@ const WHITE_GLOW := Color("ece7ff")
 const DARK := Color("09091a")
 
 var glyph_states: Array[int] = []
+var glyph_rotations: Array[int] = []
+var connections: Array[Vector2i] = []
 var current_field := "Healing"
 var time := 0.0
 var celebration := 0.0
+var drag_source := -1
+var drag_point := Vector2.ZERO
+var drag_active := false
 
 func _ready() -> void:
     mouse_filter = Control.MOUSE_FILTER_IGNORE
     set_process(true)
     queue_redraw()
 
-func set_state(states: Array[int], field_name: String) -> void:
+func set_state(states: Array[int], field_name: String, rotations: Array[int] = [], links: Array[Vector2i] = []) -> void:
     glyph_states = states.duplicate()
+    glyph_rotations = rotations.duplicate()
+    connections = links.duplicate()
     current_field = field_name
+    queue_redraw()
+
+func set_drag_preview(source: int, point: Vector2, active: bool) -> void:
+    drag_source = source
+    drag_point = point
+    drag_active = active
     queue_redraw()
 
 func celebrate() -> void:
@@ -91,21 +104,23 @@ func _draw() -> void:
     ])
     draw_polyline(square, Color(VIOLET_SOFT, 0.32), 1.1, true)
 
+    # Faint default spokes keep the diagram readable before the player wires it.
     for i in range(9):
         if i == 4:
             continue
         var slot: Vector2 = get_slot_position(i)
         var active: bool = i < glyph_states.size() and glyph_states[i] > 0
         var line_color: Color = field_color if active else VIOLET_SOFT
-        line_color.a = (0.50 + pulse * 0.22) if active else 0.11
-        draw_line(c, slot, line_color, 1.9 if active else 0.9, true)
+        line_color.a = (0.24 + pulse * 0.08) if active else 0.08
+        draw_line(c, slot, line_color, 1.2 if active else 0.8, true)
 
-    var pairs := [[0, 8], [2, 6], [1, 7], [3, 5]]
-    for pair in pairs:
-        var a: int = int(pair[0])
-        var b: int = int(pair[1])
-        if a < glyph_states.size() and b < glyph_states.size() and glyph_states[a] > 0 and glyph_states[a] == glyph_states[b]:
-            draw_line(get_slot_position(a), get_slot_position(b), Color(GOLD, 0.44 + pulse * 0.20), 2.3, true)
+    _draw_connections(field_color, pulse)
+
+    if drag_active and drag_source >= 0 and drag_source < 9:
+        var start: Vector2 = get_slot_position(drag_source)
+        draw_line(start, drag_point, Color(WHITE_GLOW, 0.18), 8.0, true)
+        draw_line(start, drag_point, Color(WHITE_GLOW, 0.88), 2.6, true)
+        draw_circle(drag_point, 5.0 + pulse * 2.0, Color(WHITE_GLOW, 0.78))
 
     var core_active: bool = glyph_states.size() > 4 and glyph_states[4] > 0
     var core_color: Color = WHITE_GLOW if core_active else VIOLET_SOFT
@@ -115,68 +130,108 @@ func _draw() -> void:
         draw_circle(c, radius * 0.11 * float(i), cc)
     draw_circle(c, 3.5 + pulse * 1.2, Color(core_color, 0.92))
 
-    # Glyphs are vector-drawn instead of font characters so Web exports never depend on CJK/symbol fonts.
+    # Glyphs are vector-drawn so Web and iOS use the same shapes without symbol-font dependencies.
     for i in range(9):
         var state: int = glyph_states[i] if i < glyph_states.size() else 0
+        var rotation_quarters: int = glyph_rotations[i] if i < glyph_rotations.size() else 0
         var glyph_color: Color = field_color
         if i == 4:
             glyph_color = WHITE_GLOW
         elif i == 0 or i == 2 or i == 6 or i == 8:
             glyph_color = GOLD
-        _draw_glyph(get_slot_position(i), state, glyph_color, radius * 0.105, pulse)
+        _draw_glyph(get_slot_position(i), state, glyph_color, radius * 0.105, pulse, rotation_quarters)
 
     if celebration > 0.0:
         var burst: float = celebration
         draw_arc(c, radius * (1.0 + (1.0 - burst) * 0.33), 0, TAU, 128, Color(WHITE_GLOW, burst * 0.72), 4.0, true)
 
-func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float, pulse: float) -> void:
+func _draw_connections(field_color: Color, pulse: float) -> void:
+    for index in range(connections.size()):
+        var link: Vector2i = connections[index]
+        var a: int = link.x
+        var b: int = link.y
+        if a < 0 or a >= 9 or b < 0 or b >= 9:
+            continue
+        if a >= glyph_states.size() or b >= glyph_states.size():
+            continue
+        if glyph_states[a] <= 0 or glyph_states[b] <= 0:
+            continue
+
+        var start := get_slot_position(a)
+        var finish := get_slot_position(b)
+        var same_glyph: bool = glyph_states[a] == glyph_states[b]
+        var color: Color = GOLD if same_glyph else field_color
+        draw_line(start, finish, Color(color, 0.12), 9.0, true)
+        draw_line(start, finish, Color(color, 0.62 + pulse * 0.20), 2.8, true)
+
+        var flow: float = fmod(time * 0.27 + float(index) * 0.19, 1.0)
+        var bead: Vector2 = start.lerp(finish, flow)
+        draw_circle(bead, 4.2 + pulse * 1.1, Color(WHITE_GLOW, 0.88))
+
+func _draw_glyph(center: Vector2, state: int, color: Color, glyph_radius: float, pulse: float, rotation_quarters: int) -> void:
     if state <= 0:
         draw_circle(center, 3.0 + pulse, Color(color, 0.88))
         return
 
     var glow: Color = Color(color, 0.20)
+    var rotation: float = float(rotation_quarters % 4) * PI * 0.5
+
     match state:
         1:
             draw_arc(center, glyph_radius, 0, TAU, 48, glow, 8.0, true)
             draw_arc(center, glyph_radius, 0, TAU, 48, color, 3.0, true)
         2:
-            var tri := PackedVector2Array([
-                center + Vector2(0, -glyph_radius),
-                center + Vector2(glyph_radius * 0.90, glyph_radius * 0.72),
-                center + Vector2(-glyph_radius * 0.90, glyph_radius * 0.72),
-                center + Vector2(0, -glyph_radius),
-            ])
+            var tri := _rotated_poly(center, [
+                Vector2(0, -glyph_radius),
+                Vector2(glyph_radius * 0.90, glyph_radius * 0.72),
+                Vector2(-glyph_radius * 0.90, glyph_radius * 0.72),
+                Vector2(0, -glyph_radius),
+            ], rotation)
             draw_polyline(tri, glow, 8.0, true)
             draw_polyline(tri, color, 3.0, true)
         3:
-            var sq := PackedVector2Array([
-                center + Vector2(-glyph_radius * 0.78, -glyph_radius * 0.78),
-                center + Vector2(glyph_radius * 0.78, -glyph_radius * 0.78),
-                center + Vector2(glyph_radius * 0.78, glyph_radius * 0.78),
-                center + Vector2(-glyph_radius * 0.78, glyph_radius * 0.78),
-                center + Vector2(-glyph_radius * 0.78, -glyph_radius * 0.78),
-            ])
+            var sq := _rotated_poly(center, [
+                Vector2(-glyph_radius * 0.78, -glyph_radius * 0.78),
+                Vector2(glyph_radius * 0.78, -glyph_radius * 0.78),
+                Vector2(glyph_radius * 0.78, glyph_radius * 0.78),
+                Vector2(-glyph_radius * 0.78, glyph_radius * 0.78),
+                Vector2(-glyph_radius * 0.78, -glyph_radius * 0.78),
+            ], rotation)
             draw_polyline(sq, glow, 8.0, true)
             draw_polyline(sq, color, 3.0, true)
         4:
-            var dia := PackedVector2Array([
-                center + Vector2(0, -glyph_radius),
-                center + Vector2(glyph_radius, 0),
-                center + Vector2(0, glyph_radius),
-                center + Vector2(-glyph_radius, 0),
-                center + Vector2(0, -glyph_radius),
-            ])
+            var dia := _rotated_poly(center, [
+                Vector2(0, -glyph_radius),
+                Vector2(glyph_radius, 0),
+                Vector2(0, glyph_radius),
+                Vector2(-glyph_radius, 0),
+                Vector2(0, -glyph_radius),
+            ], rotation)
             draw_polyline(dia, glow, 8.0, true)
             draw_polyline(dia, color, 3.0, true)
         5:
-            var star := PackedVector2Array()
+            var local_star: Array[Vector2] = []
             for i in range(8):
                 var angle: float = -PI * 0.5 + TAU * float(i) / 8.0
                 var r: float = glyph_radius if i % 2 == 0 else glyph_radius * 0.30
-                star.append(center + Vector2(cos(angle), sin(angle)) * r)
-            star.append(star[0])
+                local_star.append(Vector2(cos(angle), sin(angle)) * r)
+            local_star.append(local_star[0])
+            var star := _rotated_poly(center, local_star, rotation)
             draw_polyline(star, glow, 8.0, true)
             draw_polyline(star, color, 3.0, true)
+
+    # A small directional notch makes rotation visible even for rotationally symmetric glyphs.
+    var direction: Vector2 = Vector2(0, -glyph_radius).rotated(rotation)
+    var notch_start: Vector2 = center + direction * 0.38
+    var notch_end: Vector2 = center + direction * 0.94
+    draw_line(notch_start, notch_end, Color(WHITE_GLOW, 0.76), 2.2, true)
+    draw_circle(notch_end, 2.8 + pulse * 0.5, Color(WHITE_GLOW, 0.92))
+
+func _rotated_poly(center: Vector2, local_points: Array, rotation: float) -> PackedVector2Array:
+    var result := PackedVector2Array()
+    for point in local_points:
+        result.append(center + Vector2(point).rotated(rotation))
+    return result
 
 func _field_color(field_name: String) -> Color:
     match field_name:
