@@ -83,34 +83,34 @@ func close() -> void:
 
 func _cycle_rune(index: int) -> void:
     rune_states[index] = (rune_states[index] + 1) % RUNES.size()
-    buttons[index].text = RUNES[rune_states[index]]
+    buttons[index].text = str(RUNES[rune_states[index]])
     _check_solution()
 
 func _check_solution() -> void:
     if rune_states == target:
         research_level += 1
-        var field_name := FIELDS[(research_level - 1) % FIELDS.size()]
+        var field_name: String = str(FIELDS[(research_level - 1) % FIELDS.size()])
         status_label.text = "Breakthrough: %s magic reached level %d" % [field_name, research_level]
         research_completed.emit(research_level, field_name)
         for i in range(rune_states.size()):
             rune_states[i] = 0
-            buttons[i].text = RUNES[0]
+            buttons[i].text = str(RUNES[0])
         _make_target()
         _refresh_text()
 
 func _make_target() -> void:
     target.clear()
-    var seed_value := research_level + 1
+    var seed_value: int = research_level + 1
     for i in range(9):
-        var row := int(i / 3)
-        var col := i % 3
-        var ring_bias := abs(1 - row) + abs(1 - col)
-        target.append(1 + ((i * 2 + seed_value + ring_bias) % (RUNES.size() - 1)))
+        var row: int = int(i / 3)
+        var col: int = i % 3
+        var ring_bias: int = int(abs(1 - row) + abs(1 - col))
+        target.append(int(1 + ((i * 2 + seed_value + ring_bias) % (RUNES.size() - 1))))
 
 func _refresh_text() -> void:
-    var field_name := FIELDS[research_level % FIELDS.size()]
+    var field_name: String = str(FIELDS[research_level % FIELDS.size()])
     title_label.text = "Magic Circle Research  Lv.%d" % research_level
     var target_text := ""
     for i in range(9):
-        target_text += RUNES[target[i]] + ("\n" if i % 3 == 2 else "  ")
+        target_text += str(RUNES[target[i]]) + ("\n" if i % 3 == 2 else "  ")
     target_label.text = "Next field: %s\nTarget topology:\n%s" % [field_name, target_text]
