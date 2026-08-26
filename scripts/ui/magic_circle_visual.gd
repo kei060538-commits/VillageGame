@@ -28,7 +28,7 @@ func set_state(states: Array[int], field_name: String, rotations: Array[int] = [
     current_field = field_name
     queue_redraw()
 
-func set_drag_preview(source: int, point: Vector2, active: bool) -> void:
+func set_mana_drag_preview(source: int, point: Vector2, active: bool) -> void:
     drag_source = source
     drag_point = point
     drag_active = active
