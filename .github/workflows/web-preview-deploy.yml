@@ -34,12 +34,12 @@ jobs:
         run: |
           mkdir -p art/fonts
           curl --fail --location --retry 3 \
-            --output 'art/fonts/NotoSansJP-Variable.ttf' \
-            'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf'
-          test "$(stat -c%s art/fonts/NotoSansJP-Variable.ttf)" -gt 9000000
+            --output 'art/fonts/ZenKakuGothicNew-Regular.ttf' \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/zenkakugothicnew/ZenKakuGothicNew-Regular.ttf'
+          test "$(stat -c%s art/fonts/ZenKakuGothicNew-Regular.ttf)" -gt 2000000
           curl --fail --location --retry 3 \
-            --output /tmp/NOTO_LICENSE \
-            'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/OFL.txt'
+            --output /tmp/JAPANESE_FONT_LICENSE \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/zenkakugothicnew/OFL.txt'
 
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
@@ -58,7 +58,7 @@ jobs:
         run: |
           mkdir -p build/web
           godot --headless --path . --export-release "Web" build/web/index.html
-          cp /tmp/NOTO_LICENSE build/web/THIRD_PARTY_FONT_LICENSE.txt
+          cp /tmp/JAPANESE_FONT_LICENSE build/web/THIRD_PARTY_FONT_LICENSE.txt
           touch build/web/.nojekyll
 
       - name: Configure GitHub Pages
