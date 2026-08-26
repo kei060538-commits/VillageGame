@@ -326,15 +326,15 @@ func _on_research_completed(level: int, field_name: String) -> void:
     _refresh_event_log({})
 
 func _show_return_overlay(years_spent: int, field_name: String) -> void:
-    var field_jp := {
+    var field_jp: String = str({
         "Healing": "治癒魔法",
         "Agriculture": "農耕魔法",
         "Construction": "構築魔法",
         "Weather": "気象魔法",
         "Combat": "戦闘魔法",
-    }.get(field_name, field_name)
+    }.get(field_name, field_name))
     return_title.text = "%d年後の村へ" % years_spent
-    return_body.text = "%sが村の知識として受け継がれた。\nあなたの姿は変わらない。けれど村の時間だけが進んでいる。" % str(field_jp)
+    return_body.text = "%sが村の知識として受け継がれた。\nあなたの姿は変わらない。けれど村の時間だけが進んでいる。" % field_jp
     return_overlay.visible = true
 
 func _dismiss_return_overlay() -> void:
