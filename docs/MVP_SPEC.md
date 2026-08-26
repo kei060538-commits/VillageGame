@@ -1,26 +1,31 @@
 # VillageGame MVP Specification
 
 ## Core fantasy
-The player is an immortal young-looking witch who lives beside a small village. Villagers age, form relationships, inherit a changing culture, and die while the witch remains unchanged. The witch can live in the village freely, but magical research takes years or decades. Returning from the tower may mean meeting descendants of people the player once knew.
+The player is an immortal young-looking witch who protects one village across centuries. Villagers age, form relationships, inherit a changing culture, and die while the witch remains unchanged. Magical research can consume years or decades, so every breakthrough protects future generations at the cost of missing part of the current generation's life.
 
-To villagers, the witch is a respected and increasingly legendary figure who disappears into research for long periods and returns when the village needs knowledge or protection.
+To villagers, the witch is an increasingly legendary figure who disappears into research for long periods and returns with knowledge when the village needs it.
 
-## MVP goal
-The first playable build should prove four things:
-1. A village of 20 autonomous residents feels alive enough to watch and interact with.
-2. The player can physically live among them in a top-down 2D space.
-3. Magic research is a real puzzle system whose geometry has gameplay meaning.
-4. Research changes village survival and is inherited by ordinary villagers.
+## Product direction
+VillageGame is now a portrait-first mobile puzzle game. The magic-circle research screen is the primary play surface. The village simulation remains active underneath it, but its role is to create stakes, objectives, historical consequences, and generational stories for the puzzles rather than to be the main movement/exploration game.
+
+The core loop is:
+1. The village presents a need or threat.
+2. The player designs a magic circle under geometric and mana constraints.
+3. A successful theory becomes village knowledge.
+4. Years or decades pass.
+5. The village changes, generations turn over, and a new research problem emerges.
 
 ## Fixed design decisions
 - Engine: Godot 4.7
-- View: 2D top-down
-- Final art direction: pixel art
 - Primary commercial release target: iOS App Store
-- Web build: continuously updated playtest channel, not the final distribution format
-- Mobile play orientation: landscape
+- Web build: continuously updated rapid-playtest channel
+- Primary orientation: portrait / vertical phone layout
+- Reference viewport: 720 x 1280 (9:16)
+- Final art direction: polished pixel-art fantasy with restrained UI illustration
+- Player: immortal female witch, visually unchanged across centuries
+- Protagonist visual language: long silver hair, purple eyes, dark navy-to-violet witch clothing, gold trim, large witch hat, celestial star/moon motifs
+- Global palette: midnight navy, violet, antique gold, pale violet-white magical light
 - Initial villagers: 20
-- Player: immortal female witch, respected by villagers
 - One in-game day: 6 real minutes at normal speed
 - Endless play: hundreds of in-game years are possible
 - Threats: hunger, disease, monsters
@@ -30,44 +35,50 @@ The first playable build should prove four things:
 - Shapes in a magic circle have semantic roles such as magical field, range/containment, power, duration, stability, and mana efficiency
 - Research sessions can skip years or decades while the village simulation continues
 
-## Provisional decisions for implementation
-- One in-game year = 24 in-game days for the prototype.
-- Villagers use utility-style scoring rather than fixed schedules.
-- Each villager tracks hunger, energy, health, age, occupation, personality traits, relationships, respect for the witch, current action, and learned magic.
-- The prototype magic-circle board is 3x3: center = field/core, corners = boundary, edges = mana flow.
-- Research challenges are constraint puzzles and allow multiple valid solutions.
-- Research level is shared as village magical knowledge.
-- Monsters are initially represented as threat pressure rather than full combat actors.
-- Food security and disease pressure are aggregate village systems for the current slice.
-- Research tower interaction uses E; greeting nearby villagers uses F.
-- Movement uses WASD / arrow keys on desktop and on-screen controls on touch devices.
-- The provisional native target is iPhone + iPad with iOS 15.0 minimum; this may be revised before release.
+## Puzzle rules for the current prototype
+- The current board has nine semantic rune slots arranged as a magic circle rather than shown as a square grid.
+- Center slot = magical field/core.
+- Corner slots = boundary, range, and containment.
+- Edge slots = mana flow, power, and duration.
+- Research challenges specify minimum power, range, stability, duration, maximum mana cost, and minimum used glyphs.
+- More than one circle can solve a challenge.
+- Matching opposite glyphs can create stabilizing connections.
+- Five current magical fields: Healing, Agriculture, Construction, Weather, Combat.
+- These rules are prototype grammar and can expand into rings, drawn connections, rotation, and spatial geometry later.
 
-## Current vertical slice
-- Simple village map rendered with placeholder shapes
-- Controllable immortal witch
-- 20 autonomous villagers
-- 6-minute day/night clock
-- Needs, jobs, personality-biased decisions, sickness, and social relationships
-- Village chronicle/event log
-- Food security and disease pressure
-- Research tower with long time skips
-- Semantic magic-circle constraint puzzle
-- Five magical fields: Healing, Agriculture, Construction, Weather, Combat
-- Profession-based adoption of discovered magic by villagers
-- Monster threat meter affected by village magical development
-- Simplified generational replacement during long time skips
-- Mobile touch controls and native safe-area-aware UI foundation
-- Automated Web preview deployment
-- Automated unsigned iOS Xcode-project validation on macOS
+## Village meta simulation
+- Villagers still use utility-style decisions and retain age, occupation, personality, relationships, health, respect for the witch, and learned magic.
+- Food security, disease pressure, and monster threat remain aggregate village pressures.
+- Research knowledge spreads to suitable villagers.
+- Long research absences advance the village simulation and trigger generational turnover.
+- The main screen surfaces this simulation as village pulse indicators and a chronological history feed rather than requiring the player to walk around the village.
+- Full genealogy will eventually replace the current simplified descendant-replacement shortcut.
+
+## Current visual vertical slice
+- Animated midnight starfield / nebula background with violet and gold accents
+- Portrait 9:16 UI with iOS safe-area handling
+- Witch portrait asset slot in the header; the prototype falls back to a celestial emblem until final character art is committed
+- Large animated magic-circle centerpiece with rings, runic ticks, mana connections, stability chords, and breakthrough burst
+- Touch-friendly rune nodes placed directly on the circle
+- Gold-accented research objective card, live spell metrics, and large confirm/reset controls
+- Village pulse cards for harvest, disease, and monster threat
+- Village chronicle panel showing recent history
+- Research-success return card explaining how many years passed and what knowledge entered village culture
+- 20 autonomous villagers and the existing long-term simulation remain active underneath the presentation layer
+- Automated Godot smoke tests, Web preview deployment, and unsigned iOS Xcode-project validation
+
+## Deliberately de-emphasized from the old prototype
+- Free top-down walking is no longer the primary loop.
+- The placeholder village map and on-screen movement buttons are no longer the main presentation.
+- Direct villager greeting and tower-entry controls are not central to the portrait puzzle UI.
 
 ## Non-goals for this slice
-- Final pixel art
+- Final protagonist pixel-art asset integration
+- Final title/logo and store icon
 - Full marriage / childbirth / genealogy
-- Full combat actors and spell casting in the world
+- Full world-map combat actors
 - Advanced economy and inventories
 - Detailed disease taxonomy
 - Hundreds of spells
-- Multiple maps
-- External towns
+- Multiple explorable maps
 - Production App Store signing or TestFlight upload before Apple Developer credentials exist
