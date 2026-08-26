@@ -1,0 +1,52 @@
+name: iOS Project Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "project.godot"
+      - "export_presets.cfg"
+      - "scenes/**"
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/ios-project-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-xcode-project:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: true
+
+      - name: Import project
+        run: godot --headless --editor --path . --quit
+
+      - name: Export unsigned iOS Xcode project
+        run: |
+          mkdir -p build/ios
+          godot --headless --path . --export-release "iOS Project" build/ios/VillageGame.xcodeproj
+
+      - name: Validate generated Xcode project
+        run: |
+          test -d build/ios/VillageGame.xcodeproj
+          xcodebuild -project build/ios/VillageGame.xcodeproj -list
+
+      - name: Upload unsigned Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: VillageGame-iOS-XcodeProject
+          path: build/ios
+          if-no-files-found: error
+          retention-days: 7

@@ -16,6 +16,9 @@ The first playable build should prove four things:
 - Engine: Godot 4.7
 - View: 2D top-down
 - Final art direction: pixel art
+- Primary commercial release target: iOS App Store
+- Web build: continuously updated playtest channel, not the final distribution format
+- Mobile play orientation: landscape
 - Initial villagers: 20
 - Player: immortal female witch, respected by villagers
 - One in-game day: 6 real minutes at normal speed
@@ -37,7 +40,8 @@ The first playable build should prove four things:
 - Monsters are initially represented as threat pressure rather than full combat actors.
 - Food security and disease pressure are aggregate village systems for the current slice.
 - Research tower interaction uses E; greeting nearby villagers uses F.
-- Movement uses WASD / arrow keys.
+- Movement uses WASD / arrow keys on desktop and on-screen controls on touch devices.
+- The provisional native target is iPhone + iPad with iOS 15.0 minimum; this may be revised before release.
 
 ## Current vertical slice
 - Simple village map rendered with placeholder shapes
@@ -53,6 +57,9 @@ The first playable build should prove four things:
 - Profession-based adoption of discovered magic by villagers
 - Monster threat meter affected by village magical development
 - Simplified generational replacement during long time skips
+- Mobile touch controls and native safe-area-aware UI foundation
+- Automated Web preview deployment
+- Automated unsigned iOS Xcode-project validation on macOS
 
 ## Non-goals for this slice
 - Final pixel art
@@ -63,3 +70,4 @@ The first playable build should prove four things:
 - Hundreds of spells
 - Multiple maps
 - External towns
+- Production App Store signing or TestFlight upload before Apple Developer credentials exist
