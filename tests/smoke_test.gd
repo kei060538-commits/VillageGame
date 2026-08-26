@@ -108,11 +108,37 @@ func _run() -> void:
         _fail("glyph picker should close after a glyph is chosen")
         return
 
+    var profile_before_rotation: Dictionary = research_panel.get_circle_profile()
+    research_panel.call("_open_glyph_picker", 4)
+    research_panel.call("_rotate_selected", 1)
+    if int(research_panel.glyph_rotations[4]) != 1:
+        _fail("rotation controls should rotate the selected glyph by one quarter turn")
+        return
+    var profile_after_rotation: Dictionary = research_panel.get_circle_profile()
+    if int(profile_after_rotation.get("duration", 0)) <= int(profile_before_rotation.get("duration", 0)):
+        _fail("clockwise glyph rotation should contribute to spell duration")
+        return
+
+    research_panel.call("_open_glyph_picker", 1)
+    research_panel.call("_choose_glyph", 1)
+    var profile_before_link: Dictionary = research_panel.get_circle_profile()
+    research_panel.call("_toggle_connection", 4, 1)
+    if research_panel.connections.size() != 1:
+        _fail("drag wiring should create one normalized mana link")
+        return
+    var profile_after_link: Dictionary = research_panel.get_circle_profile()
+    if int(profile_after_link.get("links", 0)) != 1:
+        _fail("magic-circle profile should count active mana links")
+        return
+    if int(profile_after_link.get("stability", 0)) <= int(profile_before_link.get("stability", 0)):
+        _fail("matching linked glyphs should improve spell stability")
+        return
+
     var profile: Dictionary = research_panel.get_circle_profile()
     if not bool(profile.get("aligned", false)):
         _fail("healing research should align when the center uses the circle glyph")
         return
-    if not profile.has("power") or not profile.has("range") or not profile.has("stability"):
+    if not profile.has("power") or not profile.has("range") or not profile.has("stability") or not profile.has("links"):
         _fail("magic circle profile is missing semantic puzzle statistics")
         return
 
@@ -122,7 +148,7 @@ func _run() -> void:
         _fail("farmers should learn agriculture magic when village knowledge exists")
         return
 
-    print("SMOKE TEST PASS: font bootstrap, village-driven requests, glyph picker, relationships, pressures, and semantic magic-circle research loaded")
+    print("SMOKE TEST PASS: font bootstrap, village requests, glyph picker, rotation, mana links, relationships, pressures, and semantic research loaded")
     instance.queue_free()
     quit(0)
 
