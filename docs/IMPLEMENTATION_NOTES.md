@@ -12,9 +12,12 @@ This file records provisional choices made to get the game into a playable and v
 - Reference viewport: 720 x 1280 (9:16).
 - Main palette: midnight navy, violet, antique gold, and pale violet-white magical light.
 - Protagonist direction: silver long hair, purple eyes, large witch hat, navy/violet clothing with gold trim, celestial star/moon motifs.
-- The header looks for `res://art/player/witch_portrait.png`; until a final asset is intentionally committed, it uses a celestial placeholder emblem.
+- The header looks for `res://art/player/witch_portrait.png`; until a final asset is intentionally committed, it uses a simple placeholder emblem.
 - The research screen has an animated starfield/nebula backdrop and a custom-drawn magic circle with rings, rune ticks, mana links, stability chords, and breakthrough glow.
 - Native mobile layout respects the display safe area.
+- The Web preview currently falls back to English UI text so missing CJK glyphs cannot render as tofu boxes during rapid phone testing. Native iOS can retain Japanese UI; a bundled production Japanese font will replace this temporary Web fallback later.
+- Circle, triangle, square, diamond, and star puzzle glyphs are vector-drawn by Godot instead of relying on Unicode symbol fonts, keeping their appearance consistent across Web and iOS.
+- Phone readability takes priority over information density: puzzle text and touch targets are enlarged, and the village chronicle is collapsed behind a LOG control by default.
 
 ## Current puzzle rules
 - Research uses a semantic nine-slot magic circle rather than exact-pattern matching.
