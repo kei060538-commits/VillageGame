@@ -4,6 +4,19 @@ func _init() -> void:
     call_deferred("_run")
 
 func _run() -> void:
+    await process_frame
+
+    var ui_font = root.get_node_or_null("UIFont")
+    if ui_font == null:
+        _fail("UIFont autoload was not created")
+        return
+    if not bool(ui_font.get("japanese_ready")):
+        _fail("native smoke test should initialize a Japanese-capable fallback font")
+        return
+    if ThemeDB.fallback_font == null:
+        _fail("global fallback font was not installed")
+        return
+
     var packed_scene := load("res://scenes/main.tscn") as PackedScene
     if packed_scene == null:
         _fail("main scene could not be loaded")
@@ -30,6 +43,9 @@ func _run() -> void:
         return
     if research_panel == null:
         _fail("magic research panel was not created")
+        return
+    if not bool(research_panel.get("japanese_ui")):
+        _fail("native research UI should use Japanese when the fallback font is ready")
         return
     if village.villagers.size() != 20:
         _fail("expected 20 initial villagers, got %d" % village.villagers.size())
@@ -61,7 +77,7 @@ func _run() -> void:
         _fail("farmers should learn agriculture magic when village knowledge exists")
         return
 
-    print("SMOKE TEST PASS: village, relationships, pressures, and semantic magic-circle research loaded")
+    print("SMOKE TEST PASS: font bootstrap, village, relationships, pressures, and semantic magic-circle research loaded")
     instance.queue_free()
     quit(0)
 
