@@ -62,7 +62,22 @@ func _run() -> void:
         _fail("village pressure systems were not initialized")
         return
 
-    research_panel.glyph_states[4] = 1
+    research_panel.call("_open_glyph_picker", 4)
+    var glyph_picker = research_panel.get("glyph_picker")
+    if glyph_picker == null or not glyph_picker.visible:
+        _fail("tapping a magic-circle slot should open the glyph picker")
+        return
+    if int(research_panel.get("selected_slot")) != 4:
+        _fail("glyph picker should remember the selected magic-circle slot")
+        return
+    research_panel.call("_choose_glyph", 1)
+    if int(research_panel.glyph_states[4]) != 1:
+        _fail("choosing a glyph should update the selected slot")
+        return
+    if glyph_picker.visible:
+        _fail("glyph picker should close after a glyph is chosen")
+        return
+
     var profile: Dictionary = research_panel.get_circle_profile()
     if not bool(profile.get("aligned", false)):
         _fail("healing research should align when the center uses the circle glyph")
@@ -77,7 +92,7 @@ func _run() -> void:
         _fail("farmers should learn agriculture magic when village knowledge exists")
         return
 
-    print("SMOKE TEST PASS: font bootstrap, village, relationships, pressures, and semantic magic-circle research loaded")
+    print("SMOKE TEST PASS: font bootstrap, glyph picker, village, relationships, pressures, and semantic magic-circle research loaded")
     instance.queue_free()
     quit(0)
 
