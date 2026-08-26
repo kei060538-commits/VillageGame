@@ -6,6 +6,7 @@ signal research_completed(level: int, field_name: String)
 const MAGIC_VISUAL := preload("res://scripts/ui/magic_circle_visual.gd")
 
 const GLYPH_NAMES := ["Empty", "Circle", "Triangle", "Square", "Diamond", "Star"]
+const GLYPH_JP := ["空", "円", "三角", "四角", "菱形", "星"]
 const FIELDS := ["Healing", "Agriculture", "Construction", "Weather", "Combat"]
 const FIELD_CORE := {
     "Healing": 1,
@@ -42,6 +43,7 @@ var glyph_states: Array[int] = []
 var buttons: Array[Button] = []
 var current_field := "Healing"
 var requirements: Dictionary = {}
+var japanese_ui := true
 
 var title_label: Label
 var field_label: Label
@@ -75,7 +77,7 @@ func _ready() -> void:
     margin.add_child(root_box)
 
     title_label = Label.new()
-    title_label.text = "ARCANE RESEARCH"
+    title_label.text = _ui("魔法研究", "ARCANE RESEARCH")
     title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title_label.add_theme_color_override("font_color", COLOR_GOLD)
     title_label.add_theme_font_size_override("font_size", 16)
@@ -270,10 +272,10 @@ func _attempt_breakthrough() -> void:
         var completed_field: String = current_field
         research_level += 1
         status_label.add_theme_color_override("font_color", COLOR_GOLD)
-        if OS.has_feature("web"):
-            status_label.text = "%s circle stabilized. Research Lv.%d" % [completed_field, research_level]
-        else:
+        if japanese_ui:
             status_label.text = "%s術式が安定した。研究記録 Lv.%d" % [_field_jp(completed_field), research_level]
+        else:
+            status_label.text = "%s circle stabilized. Research Lv.%d" % [completed_field, research_level]
         circle_visual.celebrate()
         research_completed.emit(research_level, completed_field)
         _reset_circle()
@@ -319,15 +321,15 @@ func _make_challenge() -> void:
             requirements = {"power": 15 + tier * 2, "range": 8 + tier, "stability": 5 + tier, "duration": 3 + tier, "max_mana": 33 + tier * 2, "min_glyphs": 6}
 
 func _refresh_all() -> void:
-    if OS.has_feature("web"):
-        field_label.text = "%s  |  RESEARCH %02d" % [current_field.to_upper(), research_level + 1]
-    else:
+    if japanese_ui:
         field_label.text = "%s術式  |  RESEARCH %02d" % [_field_jp(current_field), research_level + 1]
+    else:
+        field_label.text = "%s  |  RESEARCH %02d" % [current_field.to_upper(), research_level + 1]
 
     var core_index: int = int(FIELD_CORE.get(current_field, 0))
-    var core_name: String = str(GLYPH_NAMES[core_index])
-    if OS.has_feature("web"):
-        challenge_label.text = "CORE: %s    P >= %d    R >= %d    S >= %d\nD >= %d    MANA <= %d    GLYPHS >= %d" % [
+    var core_name: String = str(GLYPH_JP[core_index]) if japanese_ui else str(GLYPH_NAMES[core_index])
+    if japanese_ui:
+        challenge_label.text = "中心核: %s    出力 >= %d    範囲 >= %d    安定 >= %d\n持続 >= %d    魔力 <= %d    使用紋章 >= %d" % [
             core_name,
             int(requirements.get("power", 0)),
             int(requirements.get("range", 0)),
@@ -337,7 +339,7 @@ func _refresh_all() -> void:
             int(requirements.get("min_glyphs", 0)),
         ]
     else:
-        challenge_label.text = "中心核: %s    出力 >= %d    範囲 >= %d    安定 >= %d\n持続 >= %d    魔力 <= %d    使用紋章 >= %d" % [
+        challenge_label.text = "CORE: %s    P >= %d    R >= %d    S >= %d\nD >= %d    MANA <= %d    GLYPHS >= %d" % [
             core_name,
             int(requirements.get("power", 0)),
             int(requirements.get("range", 0)),
@@ -351,7 +353,11 @@ func _refresh_all() -> void:
 
 func _refresh_profile() -> void:
     var profile: Dictionary = get_circle_profile()
-    var alignment_text: String = "CORE OK" if bool(profile.get("aligned", false)) else "CORE X"
+    var alignment_text: String
+    if bool(profile.get("aligned", false)):
+        alignment_text = _ui("核一致", "CORE OK")
+    else:
+        alignment_text = _ui("核不一致", "CORE X")
     profile_label.text = "P %02d   R %02d   S %02d   D %02d   M %02d   %s" % [
         int(profile.get("power", 0)),
         int(profile.get("range", 0)),
@@ -392,9 +398,7 @@ func _slot_tooltip(index: int) -> String:
     return _ui("導流紋: 主に出力、持続、魔力流を決める。", "Flow: mainly controls power, duration and mana flow.")
 
 func _ui(japanese: String, english: String) -> String:
-    if OS.has_feature("web"):
-        return english
-    return japanese
+    return japanese if japanese_ui else english
 
 func _field_jp(field_name: String) -> String:
     return str(FIELD_JP.get(field_name, field_name))
