@@ -43,11 +43,13 @@ var glyph_states: Array[int] = []
 var buttons: Array[Button] = []
 var current_field := "Healing"
 var requirements: Dictionary = {}
+var village_request: Dictionary = {}
 var japanese_ui := true
 var selected_slot := -1
 
 var title_label: Label
 var field_label: Label
+var request_label: Label
 var challenge_label: Label
 var profile_label: Label
 var status_label: Label
@@ -72,39 +74,51 @@ func _ready() -> void:
     var margin := MarginContainer.new()
     margin.add_theme_constant_override("margin_left", 16)
     margin.add_theme_constant_override("margin_right", 16)
-    margin.add_theme_constant_override("margin_top", 14)
-    margin.add_theme_constant_override("margin_bottom", 14)
+    margin.add_theme_constant_override("margin_top", 12)
+    margin.add_theme_constant_override("margin_bottom", 12)
     outer.add_child(margin)
 
     var root_box := VBoxContainer.new()
-    root_box.add_theme_constant_override("separation", 9)
+    root_box.add_theme_constant_override("separation", 7)
     margin.add_child(root_box)
 
     title_label = Label.new()
     title_label.text = _ui("魔法研究", "ARCANE RESEARCH")
     title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title_label.add_theme_color_override("font_color", COLOR_GOLD)
-    title_label.add_theme_font_size_override("font_size", 16)
+    title_label.add_theme_font_size_override("font_size", 15)
     root_box.add_child(title_label)
 
     field_label = Label.new()
     field_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     field_label.add_theme_color_override("font_color", COLOR_INK)
-    field_label.add_theme_font_size_override("font_size", 32)
+    field_label.add_theme_font_size_override("font_size", 30)
     root_box.add_child(field_label)
 
     var challenge_card := PanelContainer.new()
-    challenge_card.custom_minimum_size.y = 82
+    challenge_card.custom_minimum_size.y = 114
     challenge_card.add_theme_stylebox_override("panel", _panel_style(COLOR_PANEL_ALT, Color(COLOR_VIOLET, 0.42), 14, 1))
     root_box.add_child(challenge_card)
+
+    var challenge_box := VBoxContainer.new()
+    challenge_box.alignment = BoxContainer.ALIGNMENT_CENTER
+    challenge_box.add_theme_constant_override("separation", 3)
+    challenge_card.add_child(challenge_box)
+
+    request_label = Label.new()
+    request_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    request_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    request_label.add_theme_color_override("font_color", COLOR_GOLD)
+    request_label.add_theme_font_size_override("font_size", 15)
+    challenge_box.add_child(request_label)
 
     challenge_label = Label.new()
     challenge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     challenge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     challenge_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     challenge_label.add_theme_color_override("font_color", COLOR_INK)
-    challenge_label.add_theme_font_size_override("font_size", 17)
-    challenge_card.add_child(challenge_label)
+    challenge_label.add_theme_font_size_override("font_size", 16)
+    challenge_box.add_child(challenge_label)
 
     circle_stage = Control.new()
     circle_stage.custom_minimum_size = Vector2(500, 500)
@@ -133,7 +147,7 @@ func _ready() -> void:
     call_deferred("_layout_glyph_buttons")
 
     var metrics_card := PanelContainer.new()
-    metrics_card.custom_minimum_size.y = 64
+    metrics_card.custom_minimum_size.y = 62
     metrics_card.add_theme_stylebox_override("panel", _panel_style(Color("0c0c20"), Color(COLOR_GOLD, 0.28), 12, 1))
     root_box.add_child(metrics_card)
 
@@ -151,7 +165,7 @@ func _ready() -> void:
 
     reset_button = Button.new()
     reset_button.text = _ui("消去", "CLEAR")
-    reset_button.custom_minimum_size = Vector2(160, 58)
+    reset_button.custom_minimum_size = Vector2(160, 56)
     reset_button.focus_mode = Control.FOCUS_NONE
     reset_button.add_theme_font_size_override("font_size", 18)
     reset_button.add_theme_color_override("font_color", COLOR_MUTED)
@@ -162,7 +176,7 @@ func _ready() -> void:
 
     attempt_button = Button.new()
     attempt_button.text = _ui("術式を確定", "STABILIZE")
-    attempt_button.custom_minimum_size = Vector2(246, 60)
+    attempt_button.custom_minimum_size = Vector2(246, 58)
     attempt_button.focus_mode = Control.FOCUS_NONE
     attempt_button.add_theme_font_size_override("font_size", 19)
     attempt_button.add_theme_color_override("font_color", Color("171020"))
@@ -173,17 +187,23 @@ func _ready() -> void:
     button_row.add_child(attempt_button)
 
     status_label = Label.new()
-    status_label.custom_minimum_size.y = 48
+    status_label.custom_minimum_size.y = 42
     status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     status_label.add_theme_color_override("font_color", COLOR_MUTED)
-    status_label.add_theme_font_size_override("font_size", 16)
+    status_label.add_theme_font_size_override("font_size", 15)
     root_box.add_child(status_label)
 
     _build_glyph_picker()
     _make_challenge()
     _refresh_all()
+
+func set_village_request(request: Dictionary, refresh_now: bool = true) -> void:
+    village_request = request.duplicate(true)
+    if refresh_now and is_node_ready():
+        _make_challenge()
+        _refresh_all()
 
 func _build_glyph_picker() -> void:
     glyph_picker = PanelContainer.new()
@@ -381,7 +401,13 @@ func _failure_reasons(profile: Dictionary) -> Array[String]:
     return failures
 
 func _make_challenge() -> void:
-    current_field = str(FIELDS[research_level % FIELDS.size()])
+    if village_request.has("field"):
+        current_field = str(village_request.get("field", "Healing"))
+    else:
+        current_field = str(FIELDS[research_level % FIELDS.size()])
+    if not FIELD_CORE.has(current_field):
+        current_field = "Healing"
+
     var tier: int = int(research_level / FIELDS.size())
 
     match current_field:
@@ -401,6 +427,8 @@ func _refresh_all() -> void:
         field_label.text = "%s術式  |  RESEARCH %02d" % [_field_jp(current_field), research_level + 1]
     else:
         field_label.text = "%s  |  RESEARCH %02d" % [current_field.to_upper(), research_level + 1]
+
+    _refresh_request_text()
 
     var core_index: int = int(FIELD_CORE.get(current_field, 0))
     var core_name: String = str(GLYPH_JP[core_index]) if japanese_ui else str(GLYPH_NAMES[core_index])
@@ -427,6 +455,28 @@ func _refresh_all() -> void:
     _refresh_profile()
     _sync_circle_visual()
     _refresh_slot_styles()
+
+func _refresh_request_text() -> void:
+    if request_label == null:
+        return
+    if village_request.is_empty():
+        request_label.text = _ui("個人研究  |  魔法体系の基礎を探る", "PERSONAL RESEARCH  |  Explore the foundations of magic")
+        request_label.add_theme_color_override("font_color", COLOR_MUTED)
+        return
+
+    var title_key: String = "title_jp" if japanese_ui else "title_en"
+    var detail_key: String = "detail_jp" if japanese_ui else "detail_en"
+    var title: String = str(village_request.get(title_key, _ui("村からの研究依頼", "VILLAGE REQUEST")))
+    var detail: String = str(village_request.get(detail_key, ""))
+    request_label.text = "%s\n%s" % [title, detail]
+
+    var severity: int = int(village_request.get("severity", 0))
+    if severity >= 3:
+        request_label.add_theme_color_override("font_color", Color("ef91ab"))
+    elif severity >= 2:
+        request_label.add_theme_color_override("font_color", Color("f0c27a"))
+    else:
+        request_label.add_theme_color_override("font_color", COLOR_GOLD)
 
 func _refresh_profile() -> void:
     var profile: Dictionary = get_circle_profile()
