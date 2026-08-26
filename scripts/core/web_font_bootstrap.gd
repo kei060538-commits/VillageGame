@@ -2,7 +2,7 @@ extends Node
 
 signal japanese_font_ready
 
-const BUNDLED_WEB_FONT := "res://art/fonts/NotoSansJP-Regular.otf"
+const BUNDLED_WEB_FONT := "res://art/fonts/NotoSansJP-Variable.ttf"
 const REQUIRED_JAPANESE_CODEPOINTS := [0x65E5, 0x3042, 0x9B54] # 日, あ, 魔
 
 var japanese_ready := false
