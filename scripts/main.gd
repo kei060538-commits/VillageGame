@@ -141,15 +141,30 @@ func _build_ui() -> void:
     log_label.custom_minimum_size = Vector2(370, 180)
     history_box.add_child(log_label)
 
-    research_panel = MagicResearchPanel.new()
-    canvas.add_child(research_panel)
-    research_panel.research_completed.connect(_on_research_completed)
-
     if OS.has_feature("web") or DisplayServer.is_touchscreen_available():
         _build_touch_controls(canvas)
 
+    research_panel = MagicResearchPanel.new()
+    research_panel.z_index = 20
+    canvas.add_child(research_panel)
+    research_panel.research_completed.connect(_on_research_completed)
+    _add_research_close_button()
+
+func _add_research_close_button() -> void:
+    var close_button := Button.new()
+    close_button.text = "CLOSE"
+    close_button.focus_mode = Control.FOCUS_NONE
+    close_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+    close_button.offset_left = -104.0
+    close_button.offset_top = -50.0
+    close_button.offset_right = -12.0
+    close_button.offset_bottom = -12.0
+    close_button.pressed.connect(research_panel.close)
+    research_panel.add_child(close_button)
+
 func _build_touch_controls(canvas: CanvasLayer) -> void:
     var touch_root := Control.new()
+    touch_root.z_index = 5
     touch_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
     canvas.add_child(touch_root)
