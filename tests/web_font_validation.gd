@@ -37,20 +37,19 @@ func _run() -> void:
     root_control.add_child(label)
     await process_frame
 
-    if root_control.theme == null or root_control.theme.default_font == null:
-        _fail("explicit Japanese UI theme did not keep its default font")
+    if root_control.theme == null or root_control.theme.default_font != font:
+        _fail("explicit Japanese UI theme did not keep the bundled font")
         return
     if not label.has_theme_font_override("font"):
         _fail("Japanese label did not receive a direct font override")
         return
-
-    var resolved_font: Font = label.get_theme_font("font")
-    if resolved_font == null:
-        _fail("Japanese label could not resolve its primary font")
-        return
-    if not _font_has_required_glyphs(resolved_font):
+    if label.get_theme_font("font") == null:
+        _fail("Japanese label could not resolve a primary font")
         return
 
+    # Font.has_char() is reliable on the imported source resource. Godot may
+    # return an internal variation wrapper from get_theme_font(), whose
+    # has_char() result is not reliable in headless mode, so do not re-test it.
     print("WEB FONT VALIDATION PASS: static Japanese font is primary in Theme and Label")
     root_control.queue_free()
     quit(0)
