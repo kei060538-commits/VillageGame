@@ -34,12 +34,12 @@ jobs:
         run: |
           mkdir -p art/fonts
           curl --fail --location --retry 3 \
-            --output art/fonts/NotoSansJP-Regular.otf \
-            https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf
-          test "$(stat -c%s art/fonts/NotoSansJP-Regular.otf)" -gt 1000000
+            --output 'art/fonts/NotoSansJP-Variable.ttf' \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf'
+          test "$(stat -c%s art/fonts/NotoSansJP-Variable.ttf)" -gt 9000000
           curl --fail --location --retry 3 \
             --output /tmp/NOTO_LICENSE \
-            https://raw.githubusercontent.com/notofonts/noto-fonts/main/LICENSE
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/OFL.txt'
 
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
