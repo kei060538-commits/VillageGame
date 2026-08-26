@@ -15,9 +15,9 @@ This file records provisional choices made to get the game into a playable and v
 - The header looks for `res://art/player/witch_portrait.png`; until a final asset is intentionally committed, it uses a simple placeholder emblem.
 - The research screen has an animated starfield/nebula backdrop and a custom-drawn magic circle with rings, rune ticks, mana links, stability chords, and breakthrough glow.
 - Native mobile layout respects the display safe area.
-- The Web preview currently falls back to English UI text so missing CJK glyphs cannot render as tofu boxes during rapid phone testing. Native iOS can retain Japanese UI; a bundled production Japanese font will replace this temporary Web fallback later.
+- Web starts with a safe English fallback while its Japanese font is unavailable. It downloads the pinned Noto Sans CJK JP subset once, caches it in `user://`, installs it as the global fallback font, and reloads the scene into Japanese. Native builds use installed Japanese system fonts. If the Web font request fails, the UI remains readable in English instead of showing tofu boxes.
 - Circle, triangle, square, diamond, and star puzzle glyphs are vector-drawn by Godot instead of relying on Unicode symbol fonts, keeping their appearance consistent across Web and iOS.
-- Phone readability takes priority over information density: puzzle text and touch targets are enlarged, and the village chronicle is collapsed behind a LOG control by default.
+- Phone readability takes priority over information density: puzzle text and touch targets are enlarged, and the village chronicle is collapsed behind a compact history control by default.
 
 ## Current puzzle rules
 - Research uses a semantic nine-slot magic circle rather than exact-pattern matching.
@@ -27,6 +27,7 @@ This file records provisional choices made to get the game into a playable and v
 - Magic fields currently rotate through Healing, Agriculture, Construction, Weather, and Combat.
 - A successful research session advances one field and skips 10–30 in-game years depending on total research level.
 - A success opens a return-to-village card rather than immediately returning to a walkable map.
+- Mobile input no longer requires repeatedly cycling a slot through every glyph. Tapping a slot highlights it and opens a large six-choice glyph palette; choosing a glyph applies it and closes the palette. The picker labels the selected role as core, boundary, or flow so the geometry begins to teach its own grammar.
 
 ## Village simulation retained under the puzzle
 - One prototype year contains 24 in-game days so century-scale changes can be tested quickly.
@@ -38,7 +39,7 @@ This file records provisional choices made to get the game into a playable and v
 - The portrait main screen currently summarizes the village through harvest/disease/threat cards and a short chronological history feed.
 
 ## Next visual/gameplay systems
-1. Replace placeholder rune cycling with a more tactile drag/rotate/connect magic-circle interaction.
+1. Add drag/rotate/connect interactions on top of the new explicit glyph picker so spatial arrangement matters as much as glyph choice.
 2. Create proper puzzle objective cards generated from actual village crises and requests.
 3. Add a title screen, logo treatment, chapter/era transitions, and stronger breakthrough/return animation.
 4. Integrate final protagonist portrait/pixel art only after the intended public asset is approved.
