@@ -43,26 +43,30 @@ func _process(_delta: float) -> void:
         return
 
     clock_label.text = clock.format_time() + "   x%.0f" % clock.time_scale
-    status_label.text = "Village Magic Lv.%d    Monster threat: %d%%" % [
+    status_label.text = "Village Magic Lv.%d   %s" % [
         village.magic_level,
-        int(village.monster_threat),
+        village.get_status_summary(),
     ]
 
-    var tower_distance := player.position.distance_to(VillageSimulation.TOWER_POSITION)
+    var tower_distance: float = player.position.distance_to(VillageSimulation.TOWER_POSITION)
     if tower_distance < 92.0:
         hint_label.text = "E: enter the research tower"
         return
 
-    var nearest := _nearest_villager(72.0)
+    var nearest: Villager = _nearest_villager(72.0)
     if nearest != null:
-        hint_label.text = "%s  |  %s  |  age %d  |  %s" % [
+        var preferred_magic: String = nearest.get_preferred_magic_field()
+        var magic_skill: int = nearest.get_work_magic_level()
+        hint_label.text = "F: greet  |  %s  |  %s  |  age %d  |  %s  |  %s magic %d" % [
             nearest.display_name,
             nearest.occupation,
             nearest.age,
             nearest.current_action,
+            preferred_magic,
+            magic_skill,
         ]
     else:
-        hint_label.text = "WASD / arrows: move    1/2/3: time speed"
+        hint_label.text = "WASD / arrows: move    F: greet villager    1/2/3: time speed"
 
 func _unhandled_input(event: InputEvent) -> void:
     if not (event is InputEventKey and event.pressed and not event.echo):
@@ -71,6 +75,11 @@ func _unhandled_input(event: InputEvent) -> void:
     if event.keycode == KEY_E and player.position.distance_to(VillageSimulation.TOWER_POSITION) < 92.0:
         research_panel.toggle()
         get_viewport().set_input_as_handled()
+    elif event.keycode == KEY_F:
+        var nearest: Villager = _nearest_villager(72.0)
+        if nearest != null:
+            village.interact_with_witch(nearest)
+            get_viewport().set_input_as_handled()
     elif event.keycode == KEY_1:
         clock.set_speed(1.0)
     elif event.keycode == KEY_2:
@@ -84,7 +93,7 @@ func _build_ui() -> void:
 
     var info_panel := PanelContainer.new()
     info_panel.position = Vector2(14, 14)
-    info_panel.size = Vector2(430, 108)
+    info_panel.size = Vector2(610, 108)
     canvas.add_child(info_panel)
 
     var info_box := VBoxContainer.new()
@@ -99,6 +108,7 @@ func _build_ui() -> void:
 
     hint_label = Label.new()
     hint_label.text = "WASD / arrows: move"
+    hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     info_box.add_child(hint_label)
 
     var history_panel := PanelContainer.new()
@@ -128,7 +138,7 @@ func _build_ui() -> void:
 
 func _on_research_completed(level: int, field_name: String) -> void:
     village.apply_magic_research(level, field_name)
-    var years_spent := 12
+    var years_spent: int = clampi(8 + level * 2, 10, 30)
     clock.fast_forward_years(years_spent)
     event_log.add_event(
         "The immortal witch returned from the tower after %d years of research." % years_spent,
@@ -150,7 +160,7 @@ func _nearest_villager(max_distance: float) -> Villager:
     for villager in village.villagers:
         if not is_instance_valid(villager):
             continue
-        var distance := player.position.distance_to(villager.position)
+        var distance: float = player.position.distance_to(villager.position)
         if distance < nearest_distance:
             nearest = villager
             nearest_distance = distance
