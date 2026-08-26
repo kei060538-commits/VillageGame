@@ -50,14 +50,14 @@ func _process(_delta: float) -> void:
 
     var tower_distance: float = player.position.distance_to(VillageSimulation.TOWER_POSITION)
     if tower_distance < 92.0:
-        hint_label.text = "E: enter the research tower"
+        hint_label.text = "E / TOWER: enter the research tower"
         return
 
     var nearest: Villager = _nearest_villager(72.0)
     if nearest != null:
         var preferred_magic: String = nearest.get_preferred_magic_field()
         var magic_skill: int = nearest.get_work_magic_level()
-        hint_label.text = "F: greet  |  %s  |  %s  |  age %d  |  %s  |  %s magic %d" % [
+        hint_label.text = "F / TALK: greet  |  %s  |  %s  |  age %d  |  %s  |  %s magic %d" % [
             nearest.display_name,
             nearest.occupation,
             nearest.age,
@@ -72,20 +72,29 @@ func _unhandled_input(event: InputEvent) -> void:
     if not (event is InputEventKey and event.pressed and not event.echo):
         return
 
-    if event.keycode == KEY_E and player.position.distance_to(VillageSimulation.TOWER_POSITION) < 92.0:
-        research_panel.toggle()
-        get_viewport().set_input_as_handled()
+    if event.keycode == KEY_E:
+        _try_tower_interaction()
     elif event.keycode == KEY_F:
-        var nearest: Villager = _nearest_villager(72.0)
-        if nearest != null:
-            village.interact_with_witch(nearest)
-            get_viewport().set_input_as_handled()
+        _try_greet()
     elif event.keycode == KEY_1:
         clock.set_speed(1.0)
     elif event.keycode == KEY_2:
         clock.set_speed(4.0)
     elif event.keycode == KEY_3:
         clock.set_speed(16.0)
+
+func _try_tower_interaction() -> void:
+    if player.position.distance_to(VillageSimulation.TOWER_POSITION) >= 92.0:
+        return
+    research_panel.toggle()
+    get_viewport().set_input_as_handled()
+
+func _try_greet() -> void:
+    var nearest: Villager = _nearest_villager(72.0)
+    if nearest == null:
+        return
+    village.interact_with_witch(nearest)
+    get_viewport().set_input_as_handled()
 
 func _build_ui() -> void:
     var canvas := CanvasLayer.new()
@@ -135,6 +144,57 @@ func _build_ui() -> void:
     research_panel = MagicResearchPanel.new()
     canvas.add_child(research_panel)
     research_panel.research_completed.connect(_on_research_completed)
+
+    if OS.has_feature("web") or DisplayServer.is_touchscreen_available():
+        _build_touch_controls(canvas)
+
+func _build_touch_controls(canvas: CanvasLayer) -> void:
+    var touch_root := Control.new()
+    touch_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    canvas.add_child(touch_root)
+
+    var up := _make_touch_button(touch_root, "UP", Vector2(0.0, 1.0), Rect2(104, -194, 68, 68))
+    var left := _make_touch_button(touch_root, "LEFT", Vector2(0.0, 1.0), Rect2(30, -120, 68, 68))
+    var down := _make_touch_button(touch_root, "DOWN", Vector2(0.0, 1.0), Rect2(104, -120, 68, 68))
+    var right := _make_touch_button(touch_root, "RIGHT", Vector2(0.0, 1.0), Rect2(178, -120, 68, 68))
+
+    up.button_down.connect(player.set_touch_direction.bind(Vector2.UP))
+    up.button_up.connect(player.set_touch_direction.bind(Vector2.ZERO))
+    left.button_down.connect(player.set_touch_direction.bind(Vector2.LEFT))
+    left.button_up.connect(player.set_touch_direction.bind(Vector2.ZERO))
+    down.button_down.connect(player.set_touch_direction.bind(Vector2.DOWN))
+    down.button_up.connect(player.set_touch_direction.bind(Vector2.ZERO))
+    right.button_down.connect(player.set_touch_direction.bind(Vector2.RIGHT))
+    right.button_up.connect(player.set_touch_direction.bind(Vector2.ZERO))
+
+    var tower_button := _make_touch_button(touch_root, "TOWER", Vector2(1.0, 1.0), Rect2(-194, -120, 78, 68))
+    var talk_button := _make_touch_button(touch_root, "TALK", Vector2(1.0, 1.0), Rect2(-108, -120, 78, 68))
+    tower_button.pressed.connect(_try_tower_interaction)
+    talk_button.pressed.connect(_try_greet)
+
+    var speed_1 := _make_touch_button(touch_root, "x1", Vector2(1.0, 1.0), Rect2(-230, -194, 58, 54))
+    var speed_4 := _make_touch_button(touch_root, "x4", Vector2(1.0, 1.0), Rect2(-166, -194, 58, 54))
+    var speed_16 := _make_touch_button(touch_root, "x16", Vector2(1.0, 1.0), Rect2(-102, -194, 58, 54))
+    speed_1.pressed.connect(clock.set_speed.bind(1.0))
+    speed_4.pressed.connect(clock.set_speed.bind(4.0))
+    speed_16.pressed.connect(clock.set_speed.bind(16.0))
+
+func _make_touch_button(parent: Control, text: String, anchor: Vector2, rect: Rect2) -> Button:
+    var button := Button.new()
+    button.text = text
+    button.focus_mode = Control.FOCUS_NONE
+    button.anchor_left = anchor.x
+    button.anchor_right = anchor.x
+    button.anchor_top = anchor.y
+    button.anchor_bottom = anchor.y
+    button.offset_left = rect.position.x
+    button.offset_top = rect.position.y
+    button.offset_right = rect.position.x + rect.size.x
+    button.offset_bottom = rect.position.y + rect.size.y
+    button.add_theme_font_size_override("font_size", 14)
+    parent.add_child(button)
+    return button
 
 func _on_research_completed(level: int, field_name: String) -> void:
     village.apply_magic_research(level, field_name)
