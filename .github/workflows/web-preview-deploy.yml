@@ -51,6 +51,9 @@ jobs:
       - name: Import project
         run: godot --headless --editor --path . --quit
 
+      - name: Validate Japanese font resource
+        run: godot --headless --path . --script tests/web_font_validation.gd
+
       - name: Export Web build
         run: |
           mkdir -p build/web
