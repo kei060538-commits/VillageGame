@@ -15,7 +15,7 @@ This file records provisional choices made to get the game into a playable and v
 - Protagonist direction: silver long hair, purple eyes, large witch hat, navy/violet clothing with gold trim, celestial star/moon motifs.
 - The header looks for `res://art/player/witch_portrait.png`; until a final asset is intentionally committed, it uses a simple placeholder emblem.
 - The research screen has an animated starfield/nebula backdrop and a custom-drawn magic circle with rings, rune ticks, mana links, stability chords, and breakthrough glow.
-- The app now opens on a portrait title scene with a large animated decorative magic circle, starfield, provisional `ARCANA OF AGES` treatment, and a short fade transition into the research tower.
+- The app opens on a portrait title scene with a large animated decorative magic circle, starfield, provisional `ARCANA OF AGES` treatment, and a short fade transition into the research tower.
 - Native mobile layout respects the display safe area.
 - Web starts with a safe English fallback while its Japanese font is unavailable. It downloads the pinned Noto Sans CJK JP subset once, caches it in `user://`, installs it as the global fallback font, and reloads the scene into Japanese. Native builds use installed Japanese system fonts. If the Web font request fails, the UI remains readable in English instead of showing tofu boxes.
 - Circle, triangle, square, diamond, and star puzzle glyphs are vector-drawn by Godot instead of relying on Unicode symbol fonts, keeping their appearance consistent across Web and iOS.
@@ -29,7 +29,7 @@ This file records provisional choices made to get the game into a playable and v
 - Glyph orientation is meaningful: outward adds range, clockwise adds duration, inward adds stability/efficiency, and counter-flow adds power. Every placed glyph therefore has both shape and direction.
 - Explicit mana links also change the spell. Core-connected lines add power/stability, non-core lines add duration, same-glyph links favor stability/efficiency, mixed-glyph links favor power, and opposite-slot links add range.
 - Connected lines are drawn as glowing field-colored or gold paths with moving light beads, while an in-progress drag draws a live luminous preview from the source glyph to the finger.
-- The challenge now requires a small network rather than disconnected symbols: current minimum link counts are 2 for Healing, 3 for Agriculture, 3 for Construction, 4 for Weather, and 3 for Combat before tier scaling.
+- The challenge requires a small network rather than disconnected symbols: current minimum link counts are 2 for Healing, 3 for Agriculture, 3 for Construction, 4 for Weather, and 3 for Combat before tier scaling.
 - Magic fields are Healing, Agriculture, Construction, Weather, and Combat.
 - Research fields are selected from village conditions instead of rotating blindly. Disease drives Healing, food shortages drive Agriculture/Weather, and monster pressure alternates between Combat and Construction as the village gains defensive knowledge. Quiet periods request whichever branch of village magic is lagging behind.
 - The first prototype request comes from the clinic and establishes basic Healing, preserving a readable onboarding path before crisis-driven requests take over.
@@ -48,7 +48,7 @@ This file records provisional choices made to get the game into a playable and v
 - The portrait main screen currently summarizes the village through harvest/disease/threat cards and a short chronological history feed.
 
 ## Next visual/gameplay systems
-1. Strengthen breakthrough and return animation so completed mana networks flare before the multi-year time skip.
+1. Strengthen breakthrough and return animation: freeze puzzle input briefly, flare the completed mana network, expand several white-gold wave rings, then transition into the multi-year time skip.
 2. Turn village requests into multi-step research stories with named requesters, consequences, and success/failure follow-ups.
 3. Add era/chapter transitions and a more developed logo treatment around the provisional title screen.
 4. Integrate final protagonist portrait/pixel art only after the intended public asset is approved.
