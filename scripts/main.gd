@@ -55,7 +55,10 @@ func _process(_delta: float) -> void:
     if year_label == null:
         return
     var year: int = int((clock.get_day() - 1) / 24) + 1
-    year_label.text = "YEAR %04d   %s" % [year, clock.format_time()]
+    if _japanese_ui_enabled():
+        year_label.text = "%04d年   %s" % [year, clock.format_time()]
+    else:
+        year_label.text = "YEAR %04d   %s" % [year, clock.format_time()]
     _refresh_village_pulse()
 
 func _build_ui() -> void:
@@ -133,7 +136,7 @@ func _build_header() -> void:
     text_box.add_child(title)
 
     year_label = Label.new()
-    year_label.text = "YEAR 0001"
+    year_label.text = _ui("0001年", "YEAR 0001")
     year_label.add_theme_color_override("font_color", MUTED)
     year_label.add_theme_font_size_override("font_size", 16)
     text_box.add_child(year_label)
@@ -191,6 +194,7 @@ func _stat_card(parent: HBoxContainer, english: String, japanese: String, accent
 
 func _build_research_surface() -> void:
     research_panel = MagicResearchPanel.new()
+    research_panel.japanese_ui = _japanese_ui_enabled()
     research_panel.anchor_left = 0.0
     research_panel.anchor_right = 1.0
     research_panel.anchor_top = 0.0
@@ -241,14 +245,14 @@ func _build_chronicle() -> void:
     header.add_child(heading)
 
     var generation := Label.new()
-    generation.text = "20 SOULS"
+    generation.text = _ui("20人", "20 SOULS")
     generation.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     generation.add_theme_color_override("font_color", MUTED)
     generation.add_theme_font_size_override("font_size", 13)
     header.add_child(generation)
 
     chronicle_button = Button.new()
-    chronicle_button.text = "LOG"
+    chronicle_button.text = _ui("履歴", "LOG")
     chronicle_button.custom_minimum_size = Vector2(76, 40)
     chronicle_button.focus_mode = Control.FOCUS_NONE
     chronicle_button.add_theme_font_size_override("font_size", 14)
@@ -266,7 +270,10 @@ func _build_chronicle() -> void:
 func _toggle_chronicle() -> void:
     chronicle_expanded = not chronicle_expanded
     chronicle_label.visible = chronicle_expanded
-    chronicle_button.text = "CLOSE" if chronicle_expanded else "LOG"
+    if chronicle_expanded:
+        chronicle_button.text = _ui("閉じる", "CLOSE")
+    else:
+        chronicle_button.text = _ui("履歴", "LOG")
     chronicle_card.offset_top = -286.0 if chronicle_expanded else -78.0
     _refresh_event_log({})
 
@@ -349,7 +356,7 @@ func _on_research_completed(level: int, field_name: String) -> void:
     _refresh_event_log({})
 
 func _show_return_overlay(years_spent: int, field_name: String) -> void:
-    if OS.has_feature("web"):
+    if not _japanese_ui_enabled():
         return_title.text = "%d YEARS LATER" % years_spent
         return_body.text = "%s magic entered the village tradition.\nYou have not aged, but the village has." % field_name
     else:
@@ -385,9 +392,12 @@ func _refresh_event_log(_entry: Dictionary) -> void:
     chronicle_label.text = "\n".join(lines)
 
 func _ui(japanese: String, english: String) -> String:
-    if OS.has_feature("web"):
-        return english
-    return japanese
+    return japanese if _japanese_ui_enabled() else english
+
+func _japanese_ui_enabled() -> bool:
+    if not OS.has_feature("web"):
+        return true
+    return bool(UIFont.japanese_ready)
 
 func _apply_safe_area_layout() -> void:
     if safe_root == null:
