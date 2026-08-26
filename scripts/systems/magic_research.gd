@@ -15,6 +15,7 @@ var target_label: Label
 var status_label: Label
 
 func _ready() -> void:
+    process_mode = Node.PROCESS_MODE_WHEN_PAUSED
     visible = false
     set_anchors_preset(Control.PRESET_CENTER)
     offset_left = -230.0
@@ -36,7 +37,7 @@ func _ready() -> void:
     root_box.add_child(title_label)
 
     var help := Label.new()
-    help.text = "Click each sigil to cycle its geometry. Match the target circle.\nPress E near the tower to close."
+    help.text = "Click each sigil to cycle its geometry. Match the target circle.\nPress E to leave the tower."
     help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     root_box.add_child(help)
 
@@ -67,10 +68,14 @@ func _ready() -> void:
     _make_target()
     _refresh_text()
 
+func _unhandled_input(event: InputEvent) -> void:
+    if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+        close()
+        get_viewport().set_input_as_handled()
+
 func toggle() -> void:
     visible = not visible
     get_tree().paused = visible
-    process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 
 func close() -> void:
     visible = false
@@ -97,7 +102,7 @@ func _make_target() -> void:
     target.clear()
     var seed_value := research_level + 1
     for i in range(9):
-        var row := i / 3
+        var row := int(i / 3)
         var col := i % 3
         var ring_bias := abs(1 - row) + abs(1 - col)
         target.append(1 + ((i * 2 + seed_value + ring_bias) % (RUNES.size() - 1)))
