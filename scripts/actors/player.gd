@@ -3,8 +3,13 @@ extends CharacterBody2D
 
 const SPEED := 170.0
 
+var touch_direction := Vector2.ZERO
+
 func _ready() -> void:
     queue_redraw()
+
+func set_touch_direction(direction: Vector2) -> void:
+    touch_direction = direction.normalized() if direction.length_squared() > 0.0 else Vector2.ZERO
 
 func _physics_process(_delta: float) -> void:
     var input_vector := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
@@ -21,6 +26,8 @@ func _physics_process(_delta: float) -> void:
 
     if keyboard_vector.length_squared() > 0.0:
         input_vector = keyboard_vector.normalized()
+    elif touch_direction.length_squared() > 0.0:
+        input_vector = touch_direction
 
     velocity = input_vector * SPEED
     move_and_slide()
