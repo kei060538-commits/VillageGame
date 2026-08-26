@@ -63,11 +63,11 @@ func setup(game_clock: GameClock, village_event_log: VillageEventLog) -> void:
 
 func _spawn_initial_population() -> void:
     for i in range(OCCUPATIONS.size()):
-        var home := _home_position(i)
+        var home: Vector2 = _home_position(i)
         var villager := Villager.new()
-        var family := FAMILY_NAMES[i % FAMILY_NAMES.size()]
-        var given := GIVEN_NAMES[i % GIVEN_NAMES.size()]
-        var occupation := OCCUPATIONS[i]
+        var family: String = str(FAMILY_NAMES[i % FAMILY_NAMES.size()])
+        var given: String = str(GIVEN_NAMES[i % GIVEN_NAMES.size()])
+        var occupation: String = str(OCCUPATIONS[i])
         villager.setup(
             given + " " + family,
             family,
@@ -84,24 +84,24 @@ func _spawn_initial_population() -> void:
         add_child(villager)
 
 func _home_position(index: int) -> Vector2:
-    var column := index % 5
-    var row := index / 5
+    var column: int = index % 5
+    var row: int = int(index / 5)
     return Vector2(500 + column * 135, 235 + row * 135)
 
 func _work_position(occupation: String) -> Vector2:
     match occupation:
-        "Farmer": return anchors["farm"]
-        "Baker": return anchors["bakery"]
-        "Blacksmith": return anchors["smithy"]
-        "Doctor": return anchors["clinic"]
-        "Shopkeeper": return anchors["shop"]
-        "Innkeeper": return anchors["tavern"]
-        "Carpenter": return anchors["carpenter"]
-        "Mayor": return anchors["hall"]
-        "Researcher": return anchors["research"]
-        "Hunter", "Gatherer": return anchors["forest"]
-        "Apprentice": return anchors["smithy"] if rng.randf() < 0.5 else anchors["bakery"]
-        _: return anchors["plaza"]
+        "Farmer": return Vector2(anchors["farm"])
+        "Baker": return Vector2(anchors["bakery"])
+        "Blacksmith": return Vector2(anchors["smithy"])
+        "Doctor": return Vector2(anchors["clinic"])
+        "Shopkeeper": return Vector2(anchors["shop"])
+        "Innkeeper": return Vector2(anchors["tavern"])
+        "Carpenter": return Vector2(anchors["carpenter"])
+        "Mayor": return Vector2(anchors["hall"])
+        "Researcher": return Vector2(anchors["research"])
+        "Hunter", "Gatherer": return Vector2(anchors["forest"])
+        "Apprentice": return Vector2(anchors["smithy"] if rng.randf() < 0.5 else anchors["bakery"])
+        _: return Vector2(anchors["plaza"])
 
 func apply_magic_research(level: int, field_name: String) -> void:
     magic_level = maxi(magic_level, level)
@@ -116,7 +116,7 @@ func apply_magic_research(level: int, field_name: String) -> void:
 func _on_day_changed(day: int) -> void:
     if day <= 1:
         return
-    var protection := float(magic_fields["Combat"]) * 0.18
+    var protection: float = float(magic_fields["Combat"]) * 0.18
     monster_threat = clampf(monster_threat + maxf(0.35, 1.25 - protection), 0.0, 100.0)
 
     if monster_threat >= 75.0 and day % 3 == 0:
@@ -138,7 +138,9 @@ func _on_years_skipped(years: int, _from_year: int, _to_year: int) -> void:
             })
 
     for replacement in replacements:
-        var old_villager: Villager = replacement["villager"]
+        var old_villager := replacement["villager"] as Villager
+        if old_villager == null:
+            continue
         event_log.add_event(
             "%s is now remembered as part of village history." % old_villager.display_name,
             clock.get_day(), clock.get_minute_of_day(), "generation"
@@ -155,16 +157,17 @@ func _on_years_skipped(years: int, _from_year: int, _to_year: int) -> void:
 
 func _spawn_descendant(data: Dictionary) -> void:
     var villager := Villager.new()
-    var given := GIVEN_NAMES[rng.randi_range(0, GIVEN_NAMES.size() - 1)]
-    var family := str(data["family"])
-    var occupation := str(data["occupation"])
+    var given: String = str(GIVEN_NAMES[rng.randi_range(0, GIVEN_NAMES.size() - 1)])
+    var family: String = str(data["family"])
+    var occupation: String = str(data["occupation"])
+    var home: Vector2 = Vector2(data["home"])
     villager.setup(
         given + " " + family,
         family,
         occupation,
         rng.randi_range(18, 27),
         int(data["generation"]),
-        data["home"],
+        home,
         _work_position(occupation),
         anchors,
         clock
@@ -186,20 +189,14 @@ func _on_villager_action_changed(villager: Villager, _old_action: String, new_ac
 
 func _draw() -> void:
     draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("6f9654"))
-
-    # Roads.
     draw_rect(Rect2(390, 430, 760, 48), Color("b89b71"))
     draw_rect(Rect2(735, 160, 52, 590), Color("b89b71"))
-
-    # River and bridge.
     draw_rect(Rect2(0, 760, 1600, 140), Color("5c91a8"))
     draw_rect(Rect2(700, 748, 130, 36), Color("8f6848"))
 
-    # Farm plots.
     for row in range(4):
         draw_rect(Rect2(120, 555 + row * 42, 300, 28), Color("80623f"))
 
-    # Village buildings.
     _draw_building(Vector2(610, 365), Vector2(90, 70), Color("d1ad78"))
     _draw_building(Vector2(825, 385), Vector2(110, 82), Color("a86d55"))
     _draw_building(Vector2(910, 535), Vector2(105, 78), Color("77777f"))
@@ -209,7 +206,6 @@ func _draw() -> void:
     _draw_building(Vector2(700, 485), Vector2(120, 92), Color("c7b589"))
     _draw_building(Vector2(1035, 220), Vector2(95, 75), Color("8b779e"))
 
-    # Research tower: deliberately isolated from the village.
     draw_circle(TOWER_POSITION, 52.0, Color("4f486d"))
     draw_circle(TOWER_POSITION, 39.0, Color("26283e"))
     draw_line(TOWER_POSITION + Vector2(-30, 18), TOWER_POSITION + Vector2(30, -18), Color("bda9e8"), 4.0)
@@ -222,4 +218,4 @@ func _draw_building(center: Vector2, size: Vector2, color: Color) -> void:
         center + Vector2(size.x * 0.6, -size.y * 0.45),
         center + Vector2(0, -size.y * 0.85),
     ])
-    draw_polygon(roof, PackedColorArray([Color("644b43")]))
+    draw_colored_polygon(roof, Color("644b43"))
