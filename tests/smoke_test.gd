@@ -54,6 +54,36 @@ func _run() -> void:
         _fail("one day must equal 360 real seconds")
         return
 
+    var initial_request: Dictionary = research_panel.get("village_request")
+    if str(initial_request.get("field", "")) != "Healing":
+        _fail("the first village request should establish basic healing magic")
+        return
+    if research_panel.get_current_field() != "Healing":
+        _fail("the first research challenge should follow the village healing request")
+        return
+
+    var severe_threat_request: Dictionary = ResearchRequestPlanner.choose_request(
+        72.0,
+        4.0,
+        90.0,
+        {"Healing": 1, "Agriculture": 0, "Construction": 0, "Weather": 0, "Combat": 0},
+        1
+    )
+    if str(severe_threat_request.get("field", "")) != "Combat":
+        _fail("an undefended village under severe monster threat should request combat research")
+        return
+
+    var ward_request: Dictionary = ResearchRequestPlanner.choose_request(
+        72.0,
+        4.0,
+        90.0,
+        {"Healing": 1, "Agriculture": 0, "Construction": 0, "Weather": 0, "Combat": 1},
+        2
+    )
+    if str(ward_request.get("field", "")) != "Construction":
+        _fail("after combat knowledge exists, severe monster threat should also drive ward construction")
+        return
+
     var first_villager = village.villagers[0]
     if first_villager.relationships.size() < 18:
         _fail("initial villagers should know most other villagers")
@@ -92,7 +122,7 @@ func _run() -> void:
         _fail("farmers should learn agriculture magic when village knowledge exists")
         return
 
-    print("SMOKE TEST PASS: font bootstrap, glyph picker, village, relationships, pressures, and semantic magic-circle research loaded")
+    print("SMOKE TEST PASS: font bootstrap, village-driven requests, glyph picker, relationships, pressures, and semantic magic-circle research loaded")
     instance.queue_free()
     quit(0)
 
