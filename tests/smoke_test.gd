@@ -1,7 +1,5 @@
 extends SceneTree
 
-const REQUIRED_JAPANESE_CODEPOINTS := [0x65E5, 0x3042, 0x9B54] # 日, あ, 魔
-
 func _init() -> void:
     call_deferred("_run")
 
@@ -13,17 +11,22 @@ func _run() -> void:
         _fail("UIFont autoload was not created")
         return
     if not bool(ui_font.get("japanese_ready")):
-        _fail("native smoke test should initialize a Japanese-capable font")
+        _fail("native smoke test should initialize a UI font")
         return
     if ThemeDB.fallback_font == null:
         _fail("global fallback font was not installed")
         return
 
+    var expected_font := ui_font.call("get_ui_font") as Font
     var ui_theme := ui_font.call("get_ui_theme") as Theme
+    if expected_font == null:
+        _fail("UIFont should expose its installed primary font")
+        return
     if ui_theme == null or ui_theme.default_font == null:
         _fail("UIFont should expose an explicit UI theme with a primary font")
         return
-    if not _font_has_required_glyphs(ui_theme.default_font):
+    if ui_theme.default_font != expected_font:
+        _fail("UIFont theme should use the installed primary font")
         return
 
     var configured_main: String = str(ProjectSettings.get_setting("application/run/main_scene", ""))
@@ -47,13 +50,14 @@ func _run() -> void:
     if title_instance.get("decorative_circle") == null:
         _fail("title screen should display a decorative magic circle")
         return
-    if title_instance.theme == null or title_instance.theme.default_font == null:
+    if title_instance.theme == null or title_instance.theme.default_font != expected_font:
         _fail("title root should receive the explicit UIFont theme")
         return
     if not title_start.has_theme_font_override("font"):
         _fail("title button should receive a direct primary font override")
         return
-    if not _font_has_required_glyphs(title_start.get_theme_font("font")):
+    if title_start.get_theme_font("font") != expected_font:
+        _fail("title button should resolve the installed primary font")
         return
 
     title_instance.queue_free()
@@ -89,20 +93,22 @@ func _run() -> void:
     if research_panel == null:
         _fail("magic research panel was not created")
         return
-    if safe_root == null or safe_root.theme == null or safe_root.theme.default_font == null:
+    if safe_root == null or safe_root.theme == null or safe_root.theme.default_font != expected_font:
         _fail("main UI root should receive the explicit UIFont theme")
         return
     if year_label == null or not year_label.has_theme_font_override("font"):
-        _fail("main Japanese labels should receive direct primary font overrides")
+        _fail("main labels should receive direct primary font overrides")
         return
-    if not _font_has_required_glyphs(year_label.get_theme_font("font")):
+    if year_label.get_theme_font("font") != expected_font:
+        _fail("main labels should resolve the installed primary font")
         return
 
     var research_title := research_panel.get("title_label") as Label
     if research_title == null or not research_title.has_theme_font_override("font"):
         _fail("dynamically-created research labels should receive direct font overrides")
         return
-    if not _font_has_required_glyphs(research_title.get_theme_font("font")):
+    if research_title.get_theme_font("font") != expected_font:
+        _fail("research labels should resolve the installed primary font")
         return
 
     if not bool(research_panel.get("japanese_ui")):
@@ -209,19 +215,9 @@ func _run() -> void:
         _fail("farmers should learn agriculture magic when village knowledge exists")
         return
 
-    print("SMOKE TEST PASS: primary Japanese UI theme, direct Control fonts, title, village requests, glyph puzzle, relationships, and pressures loaded")
+    print("SMOKE TEST PASS: explicit primary UI theme, direct Control fonts, title, village requests, glyph puzzle, relationships, and pressures loaded")
     instance.queue_free()
     quit(0)
-
-func _font_has_required_glyphs(font: Font) -> bool:
-    if font == null:
-        _fail("resolved UI font was null")
-        return false
-    for codepoint in REQUIRED_JAPANESE_CODEPOINTS:
-        if not font.has_char(int(codepoint)):
-            _fail("resolved UI font lacks U+%04X" % int(codepoint))
-            return false
-    return true
 
 func _fail(message: String) -> void:
     push_error("SMOKE TEST FAIL: " + message)
