@@ -1,6 +1,7 @@
 extends Node2D
 
 const ARCANE_BACKGROUND := preload("res://scripts/ui/arcane_background.gd")
+const RESEARCH_REQUEST_PLANNER := preload("res://scripts/systems/research_request_planner.gd")
 
 const INK := Color("e9e5ff")
 const MUTED := Color("aaa4c4")
@@ -206,6 +207,7 @@ func _build_research_surface() -> void:
     research_panel.z_index = 10
     safe_root.add_child(research_panel)
     research_panel.research_completed.connect(_on_research_completed)
+    research_panel.set_village_request(_current_research_request())
 
 func _build_chronicle() -> void:
     chronicle_card = PanelContainer.new()
@@ -351,9 +353,20 @@ func _on_research_completed(level: int, field_name: String) -> void:
         "The immortal witch returned from the tower after %d years of research." % years_spent,
         clock.get_day(), clock.get_minute_of_day(), "history"
     )
+    research_panel.set_village_request(_current_research_request(), false)
     _show_return_overlay(years_spent, field_name)
     _refresh_village_pulse()
     _refresh_event_log({})
+
+func _current_research_request() -> Dictionary:
+    var level: int = 0 if research_panel == null else int(research_panel.research_level)
+    return RESEARCH_REQUEST_PLANNER.choose_request(
+        village.food_security,
+        village.disease_pressure,
+        village.monster_threat,
+        village.magic_fields,
+        level
+    )
 
 func _show_return_overlay(years_spent: int, field_name: String) -> void:
     if not _japanese_ui_enabled():
