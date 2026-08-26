@@ -5,7 +5,6 @@ signal research_completed(level: int, field_name: String)
 
 const MAGIC_VISUAL := preload("res://scripts/ui/magic_circle_visual.gd")
 
-const GLYPHS := ["·", "○", "△", "□", "◇", "✦"]
 const GLYPH_NAMES := ["Empty", "Circle", "Triangle", "Square", "Diamond", "Star"]
 const FIELDS := ["Healing", "Agriculture", "Construction", "Weather", "Combat"]
 const FIELD_CORE := {
@@ -31,7 +30,7 @@ const GLYPH_COST := [0, 2, 3, 2, 2, 5]
 const GLYPH_EFFICIENCY := [0, 1, 0, 1, 3, 0]
 
 const COLOR_INK := Color("e9e5ff")
-const COLOR_MUTED := Color("9993b7")
+const COLOR_MUTED := Color("aaa4c4")
 const COLOR_GOLD := Color("dcb56f")
 const COLOR_VIOLET := Color("9a61ff")
 const COLOR_PANEL := Color("111126")
@@ -65,32 +64,32 @@ func _ready() -> void:
     add_child(outer)
 
     var margin := MarginContainer.new()
-    margin.add_theme_constant_override("margin_left", 18)
-    margin.add_theme_constant_override("margin_right", 18)
-    margin.add_theme_constant_override("margin_top", 16)
-    margin.add_theme_constant_override("margin_bottom", 16)
+    margin.add_theme_constant_override("margin_left", 16)
+    margin.add_theme_constant_override("margin_right", 16)
+    margin.add_theme_constant_override("margin_top", 14)
+    margin.add_theme_constant_override("margin_bottom", 14)
     outer.add_child(margin)
 
     var root_box := VBoxContainer.new()
-    root_box.add_theme_constant_override("separation", 8)
+    root_box.add_theme_constant_override("separation", 9)
     margin.add_child(root_box)
 
     title_label = Label.new()
     title_label.text = "ARCANE RESEARCH"
     title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     title_label.add_theme_color_override("font_color", COLOR_GOLD)
-    title_label.add_theme_font_size_override("font_size", 13)
+    title_label.add_theme_font_size_override("font_size", 16)
     root_box.add_child(title_label)
 
     field_label = Label.new()
     field_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     field_label.add_theme_color_override("font_color", COLOR_INK)
-    field_label.add_theme_font_size_override("font_size", 27)
+    field_label.add_theme_font_size_override("font_size", 32)
     root_box.add_child(field_label)
 
     var challenge_card := PanelContainer.new()
-    challenge_card.custom_minimum_size.y = 68
-    challenge_card.add_theme_stylebox_override("panel", _panel_style(COLOR_PANEL_ALT, Color(COLOR_VIOLET, 0.38), 14, 1))
+    challenge_card.custom_minimum_size.y = 82
+    challenge_card.add_theme_stylebox_override("panel", _panel_style(COLOR_PANEL_ALT, Color(COLOR_VIOLET, 0.42), 14, 1))
     root_box.add_child(challenge_card)
 
     challenge_label = Label.new()
@@ -98,28 +97,27 @@ func _ready() -> void:
     challenge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     challenge_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     challenge_label.add_theme_color_override("font_color", COLOR_INK)
-    challenge_label.add_theme_font_size_override("font_size", 14)
+    challenge_label.add_theme_font_size_override("font_size", 17)
     challenge_card.add_child(challenge_label)
 
     circle_stage = Control.new()
-    circle_stage.custom_minimum_size = Vector2(430, 430)
+    circle_stage.custom_minimum_size = Vector2(500, 500)
     circle_stage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
     root_box.add_child(circle_stage)
 
     circle_visual = MAGIC_VISUAL.new()
+    circle_visual.z_index = 3
     circle_visual.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     circle_stage.add_child(circle_visual)
 
     for i in range(9):
         glyph_states.append(0)
         var button := Button.new()
-        button.custom_minimum_size = Vector2(60, 60)
-        button.size = Vector2(60, 60)
-        button.text = str(GLYPHS[0])
+        button.z_index = 2
+        button.custom_minimum_size = Vector2(76, 76)
+        button.size = Vector2(76, 76)
+        button.text = ""
         button.focus_mode = Control.FOCUS_NONE
-        button.add_theme_font_size_override("font_size", 27)
-        button.add_theme_color_override("font_color", COLOR_INK)
-        button.add_theme_color_override("font_hover_color", Color.WHITE)
         button.add_theme_stylebox_override("normal", _glyph_style(i, false))
         button.add_theme_stylebox_override("hover", _glyph_style(i, true))
         button.add_theme_stylebox_override("pressed", _glyph_style(i, true))
@@ -132,38 +130,38 @@ func _ready() -> void:
     call_deferred("_layout_glyph_buttons")
 
     var metrics_card := PanelContainer.new()
-    metrics_card.custom_minimum_size.y = 54
-    metrics_card.add_theme_stylebox_override("panel", _panel_style(Color("0c0c20"), Color(COLOR_GOLD, 0.22), 12, 1))
+    metrics_card.custom_minimum_size.y = 64
+    metrics_card.add_theme_stylebox_override("panel", _panel_style(Color("0c0c20"), Color(COLOR_GOLD, 0.28), 12, 1))
     root_box.add_child(metrics_card)
 
     profile_label = Label.new()
     profile_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     profile_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     profile_label.add_theme_color_override("font_color", COLOR_INK)
-    profile_label.add_theme_font_size_override("font_size", 14)
+    profile_label.add_theme_font_size_override("font_size", 18)
     metrics_card.add_child(profile_label)
 
     var button_row := HBoxContainer.new()
     button_row.alignment = BoxContainer.ALIGNMENT_CENTER
-    button_row.add_theme_constant_override("separation", 10)
+    button_row.add_theme_constant_override("separation", 12)
     root_box.add_child(button_row)
 
     reset_button = Button.new()
-    reset_button.text = "術式を消去"
-    reset_button.custom_minimum_size = Vector2(148, 48)
+    reset_button.text = _ui("消去", "CLEAR")
+    reset_button.custom_minimum_size = Vector2(160, 58)
     reset_button.focus_mode = Control.FOCUS_NONE
-    reset_button.add_theme_font_size_override("font_size", 14)
+    reset_button.add_theme_font_size_override("font_size", 18)
     reset_button.add_theme_color_override("font_color", COLOR_MUTED)
-    reset_button.add_theme_stylebox_override("normal", _panel_style(Color("111126"), Color(COLOR_BORDER, 0.8), 12, 1))
-    reset_button.add_theme_stylebox_override("hover", _panel_style(Color("191735"), Color(COLOR_VIOLET, 0.55), 12, 1))
+    reset_button.add_theme_stylebox_override("normal", _panel_style(Color("111126"), Color(COLOR_BORDER, 0.9), 13, 1))
+    reset_button.add_theme_stylebox_override("hover", _panel_style(Color("191735"), Color(COLOR_VIOLET, 0.65), 13, 1))
     reset_button.pressed.connect(_reset_circle)
     button_row.add_child(reset_button)
 
     attempt_button = Button.new()
-    attempt_button.text = "術式を確定"
-    attempt_button.custom_minimum_size = Vector2(220, 52)
+    attempt_button.text = _ui("術式を確定", "STABILIZE")
+    attempt_button.custom_minimum_size = Vector2(246, 60)
     attempt_button.focus_mode = Control.FOCUS_NONE
-    attempt_button.add_theme_font_size_override("font_size", 16)
+    attempt_button.add_theme_font_size_override("font_size", 19)
     attempt_button.add_theme_color_override("font_color", Color("171020"))
     attempt_button.add_theme_stylebox_override("normal", _panel_style(COLOR_GOLD, Color("f4d99e"), 13, 1))
     attempt_button.add_theme_stylebox_override("hover", _panel_style(Color("f0cb82"), Color.WHITE, 13, 1))
@@ -172,12 +170,12 @@ func _ready() -> void:
     button_row.add_child(attempt_button)
 
     status_label = Label.new()
-    status_label.custom_minimum_size.y = 42
+    status_label.custom_minimum_size.y = 48
     status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     status_label.add_theme_color_override("font_color", COLOR_MUTED)
-    status_label.add_theme_font_size_override("font_size", 13)
+    status_label.add_theme_font_size_override("font_size", 16)
     root_box.add_child(status_label)
 
     _make_challenge()
@@ -260,8 +258,7 @@ func get_circle_profile() -> Dictionary:
     }
 
 func _cycle_glyph(index: int) -> void:
-    glyph_states[index] = (glyph_states[index] + 1) % GLYPHS.size()
-    buttons[index].text = str(GLYPHS[glyph_states[index]])
+    glyph_states[index] = (glyph_states[index] + 1) % GLYPH_NAMES.size()
     status_label.text = ""
     _refresh_profile()
     _sync_circle_visual()
@@ -270,10 +267,13 @@ func _attempt_breakthrough() -> void:
     var profile: Dictionary = get_circle_profile()
     var failures: Array[String] = _failure_reasons(profile)
     if failures.is_empty():
-        var completed_field := current_field
+        var completed_field: String = current_field
         research_level += 1
         status_label.add_theme_color_override("font_color", COLOR_GOLD)
-        status_label.text = "%s術式が安定した。研究記録 Lv.%d" % [_field_jp(completed_field), research_level]
+        if OS.has_feature("web"):
+            status_label.text = "%s circle stabilized. Research Lv.%d" % [completed_field, research_level]
+        else:
+            status_label.text = "%s術式が安定した。研究記録 Lv.%d" % [_field_jp(completed_field), research_level]
         circle_visual.celebrate()
         research_completed.emit(research_level, completed_field)
         _reset_circle()
@@ -281,25 +281,25 @@ func _attempt_breakthrough() -> void:
         _refresh_all()
         return
 
-    status_label.add_theme_color_override("font_color", Color("cf8aa9"))
-    status_label.text = "術式崩壊：" + " / ".join(failures)
+    status_label.add_theme_color_override("font_color", Color("e89ab8"))
+    status_label.text = _ui("術式崩壊: ", "COLLAPSE: ") + " / ".join(failures)
 
 func _failure_reasons(profile: Dictionary) -> Array[String]:
     var failures: Array[String] = []
     if not bool(profile.get("aligned", false)):
-        failures.append("中心核が不一致")
+        failures.append(_ui("中心核不一致", "WRONG CORE"))
     if int(profile.get("power", 0)) < int(requirements.get("power", 0)):
-        failures.append("出力不足")
+        failures.append(_ui("出力不足", "LOW POWER"))
     if int(profile.get("range", 0)) < int(requirements.get("range", 0)):
-        failures.append("範囲不足")
+        failures.append(_ui("範囲不足", "LOW RANGE"))
     if int(profile.get("stability", 0)) < int(requirements.get("stability", 0)):
-        failures.append("安定性不足")
+        failures.append(_ui("安定性不足", "LOW STABILITY"))
     if int(profile.get("duration", 0)) < int(requirements.get("duration", 0)):
-        failures.append("持続不足")
+        failures.append(_ui("持続不足", "LOW DURATION"))
     if int(profile.get("mana_cost", 999)) > int(requirements.get("max_mana", 999)):
-        failures.append("魔力消費過多")
+        failures.append(_ui("魔力消費過多", "MANA TOO HIGH"))
     if int(profile.get("active_glyphs", 0)) < int(requirements.get("min_glyphs", 0)):
-        failures.append("術式が未完成")
+        failures.append(_ui("術式未完成", "INCOMPLETE"))
     return failures
 
 func _make_challenge() -> void:
@@ -319,26 +319,40 @@ func _make_challenge() -> void:
             requirements = {"power": 15 + tier * 2, "range": 8 + tier, "stability": 5 + tier, "duration": 3 + tier, "max_mana": 33 + tier * 2, "min_glyphs": 6}
 
 func _refresh_all() -> void:
-    field_label.text = "%s術式  ·  RESEARCH %02d" % [_field_jp(current_field), research_level + 1]
+    if OS.has_feature("web"):
+        field_label.text = "%s  |  RESEARCH %02d" % [current_field.to_upper(), research_level + 1]
+    else:
+        field_label.text = "%s術式  |  RESEARCH %02d" % [_field_jp(current_field), research_level + 1]
+
     var core_index: int = int(FIELD_CORE.get(current_field, 0))
-    challenge_label.text = "中心核 %s   ｜   出力 ≥ %d   範囲 ≥ %d   安定 ≥ %d\n持続 ≥ %d   魔力 ≤ %d   使用紋章 ≥ %d" % [
-        str(GLYPHS[core_index]),
-        int(requirements.get("power", 0)),
-        int(requirements.get("range", 0)),
-        int(requirements.get("stability", 0)),
-        int(requirements.get("duration", 0)),
-        int(requirements.get("max_mana", 0)),
-        int(requirements.get("min_glyphs", 0)),
-    ]
-    for i in range(buttons.size()):
-        buttons[i].text = str(GLYPHS[glyph_states[i]])
+    var core_name: String = str(GLYPH_NAMES[core_index])
+    if OS.has_feature("web"):
+        challenge_label.text = "CORE: %s    P >= %d    R >= %d    S >= %d\nD >= %d    MANA <= %d    GLYPHS >= %d" % [
+            core_name,
+            int(requirements.get("power", 0)),
+            int(requirements.get("range", 0)),
+            int(requirements.get("stability", 0)),
+            int(requirements.get("duration", 0)),
+            int(requirements.get("max_mana", 0)),
+            int(requirements.get("min_glyphs", 0)),
+        ]
+    else:
+        challenge_label.text = "中心核: %s    出力 >= %d    範囲 >= %d    安定 >= %d\n持続 >= %d    魔力 <= %d    使用紋章 >= %d" % [
+            core_name,
+            int(requirements.get("power", 0)),
+            int(requirements.get("range", 0)),
+            int(requirements.get("stability", 0)),
+            int(requirements.get("duration", 0)),
+            int(requirements.get("max_mana", 0)),
+            int(requirements.get("min_glyphs", 0)),
+        ]
     _refresh_profile()
     _sync_circle_visual()
 
 func _refresh_profile() -> void:
     var profile: Dictionary = get_circle_profile()
-    var alignment_text := "核✓" if bool(profile.get("aligned", false)) else "核×"
-    profile_label.text = "P %02d    R %02d    S %02d    D %02d    M %02d    %s" % [
+    var alignment_text: String = "CORE OK" if bool(profile.get("aligned", false)) else "CORE X"
+    profile_label.text = "P %02d   R %02d   S %02d   D %02d   M %02d   %s" % [
         int(profile.get("power", 0)),
         int(profile.get("range", 0)),
         int(profile.get("stability", 0)),
@@ -350,8 +364,6 @@ func _refresh_profile() -> void:
 func _reset_circle() -> void:
     for i in range(glyph_states.size()):
         glyph_states[i] = 0
-        if i < buttons.size():
-            buttons[i].text = str(GLYPHS[0])
     if status_label != null:
         status_label.add_theme_color_override("font_color", COLOR_MUTED)
     if profile_label != null:
@@ -374,10 +386,15 @@ func _is_corner(index: int) -> bool:
 
 func _slot_tooltip(index: int) -> String:
     if index == 4:
-        return "中心核：魔法分野を決め、出力へ強く影響する。"
+        return _ui("中心核: 魔法分野と主出力を決める。", "Core: sets the magic field and main output.")
     if _is_corner(index):
-        return "境界紋：主に範囲と封じ込めを決める。"
-    return "導流紋：主に出力、持続、魔力流を決める。"
+        return _ui("境界紋: 主に範囲と封じ込めを決める。", "Boundary: mainly controls range and containment.")
+    return _ui("導流紋: 主に出力、持続、魔力流を決める。", "Flow: mainly controls power, duration and mana flow.")
+
+func _ui(japanese: String, english: String) -> String:
+    if OS.has_feature("web"):
+        return english
+    return japanese
 
 func _field_jp(field_name: String) -> String:
     return str(FIELD_JP.get(field_name, field_name))
@@ -401,12 +418,13 @@ func _panel_style(bg: Color, border: Color, radius: int, width: int) -> StyleBox
     return style
 
 func _glyph_style(index: int, highlighted: bool) -> StyleBoxFlat:
-    var role_color := COLOR_GOLD if _is_corner(index) else COLOR_VIOLET
+    var role_color: Color = COLOR_GOLD if _is_corner(index) else COLOR_VIOLET
     if index == 4:
         role_color = Color("e9e5ff")
-    var bg := Color("18162f") if not highlighted else Color("2b2350")
-    var border := Color(role_color, 0.48 if not highlighted else 0.92)
-    var style := _panel_style(bg, border, 30, 1 if not highlighted else 2)
-    style.shadow_color = Color(role_color, 0.13 if not highlighted else 0.28)
-    style.shadow_size = 8 if highlighted else 4
+    var bg: Color = Color("17152f") if not highlighted else Color("2d2454")
+    bg.a = 0.92
+    var border: Color = Color(role_color, 0.55 if not highlighted else 1.0)
+    var style := _panel_style(bg, border, 38, 2 if highlighted else 1)
+    style.shadow_color = Color(role_color, 0.18 if not highlighted else 0.34)
+    style.shadow_size = 10 if highlighted else 5
     return style
