@@ -20,6 +20,8 @@ func _ready() -> void:
         japanese_ready = true
 
     _build_ui_theme()
+    get_tree().node_added.connect(_on_node_added)
+    call_deferred("_apply_to_existing_tree")
     japanese_font_ready.emit()
 
 func get_ui_font() -> Font:
@@ -40,12 +42,48 @@ func apply_to(root_control: Control, force_text_controls: bool = true) -> bool:
         return false
 
     # ThemeDB.fallback_font was not sufficient on iPhone Safari: the engine's
-    # default font still produced tofu. Assigning a Theme.default_font makes
-    # the bundled Japanese font the primary font for every descendant Control.
+    # default font still produced tofu. Assign a real Theme.default_font and
+    # make the bundled font the primary font of every text-bearing Control.
     root_control.theme = _ui_theme
     if force_text_controls:
         _apply_font_overrides(root_control)
     return true
+
+func _on_node_added(node: Node) -> void:
+    if not (node is Control) or _installed_font == null:
+        return
+    _apply_control(node as Control)
+
+func _apply_to_existing_tree() -> void:
+    if _installed_font == null:
+        return
+    _apply_existing_children(get_tree().root)
+
+func _apply_existing_children(node: Node) -> void:
+    if node is Control:
+        _apply_control(node as Control)
+    for child in node.get_children():
+        _apply_existing_children(child)
+
+func _apply_control(control: Control) -> void:
+    if _ui_theme == null:
+        _build_ui_theme()
+    if _ui_theme == null:
+        return
+
+    # Root UI controls receive the shared theme. Descendants inherit it, while
+    # text controls also get a direct override to avoid browser fallback paths.
+    if not (control.get_parent() is Control):
+        control.theme = _ui_theme
+    _apply_font_override_to_control(control)
+
+func _apply_font_override_to_control(control: Control) -> void:
+    if control is RichTextLabel:
+        var rich_text := control as RichTextLabel
+        for theme_name in ["normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font"]:
+            rich_text.add_theme_font_override(theme_name, _installed_font)
+    elif control is Label or control is Button or control is LineEdit or control is TextEdit or control is ItemList or control is Tree:
+        control.add_theme_font_override("font", _installed_font)
 
 func _install_bundled_web_font() -> bool:
     if not ResourceLoader.exists(BUNDLED_WEB_FONT):
@@ -91,12 +129,7 @@ func _build_ui_theme() -> void:
     _ui_theme = theme
 
 func _apply_font_overrides(node: Node) -> void:
-    if node is RichTextLabel:
-        var rich_text := node as RichTextLabel
-        for theme_name in ["normal_font", "bold_font", "italics_font", "bold_italics_font", "mono_font"]:
-            rich_text.add_theme_font_override(theme_name, _installed_font)
-    elif node is Label or node is Button or node is LineEdit or node is TextEdit or node is ItemList or node is Tree:
-        (node as Control).add_theme_font_override("font", _installed_font)
-
+    if node is Control:
+        _apply_font_override_to_control(node as Control)
     for child in node.get_children():
         _apply_font_overrides(child)
