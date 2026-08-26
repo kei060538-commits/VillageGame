@@ -30,6 +30,17 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Stage Japanese Web font
+        run: |
+          mkdir -p art/fonts
+          curl --fail --location --retry 3 \
+            --output art/fonts/NotoSansJP-Regular.otf \
+            https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/SubsetOTF/JP/NotoSansJP-Regular.otf
+          test "$(stat -c%s art/fonts/NotoSansJP-Regular.otf)" -gt 1000000
+          curl --fail --location --retry 3 \
+            --output /tmp/NOTO_LICENSE \
+            https://raw.githubusercontent.com/notofonts/noto-cjk/main/LICENSE
+
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
         with:
@@ -44,6 +55,7 @@ jobs:
         run: |
           mkdir -p build/web
           godot --headless --path . --export-release "Web" build/web/index.html
+          cp /tmp/NOTO_LICENSE build/web/THIRD_PARTY_FONT_LICENSE.txt
           touch build/web/.nojekyll
 
       - name: Configure GitHub Pages
