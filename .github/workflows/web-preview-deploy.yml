@@ -39,7 +39,7 @@ jobs:
           test "$(stat -c%s art/fonts/NotoSansJP-Regular.otf)" -gt 1000000
           curl --fail --location --retry 3 \
             --output /tmp/NOTO_LICENSE \
-            https://raw.githubusercontent.com/notofonts/noto-cjk/main/LICENSE
+            https://raw.githubusercontent.com/notofonts/noto-fonts/main/LICENSE
 
       - name: Setup Godot
         uses: chickensoft-games/setup-godot@v2
