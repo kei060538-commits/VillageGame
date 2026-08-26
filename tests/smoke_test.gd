@@ -17,6 +17,7 @@ func _run() -> void:
     var clock = instance.get("clock")
     var village = instance.get("village")
     var player = instance.get("player")
+    var research_panel = instance.get("research_panel")
 
     if clock == null:
         _fail("game clock was not created")
@@ -27,6 +28,9 @@ func _run() -> void:
     if player == null:
         _fail("player was not created")
         return
+    if research_panel == null:
+        _fail("magic research panel was not created")
+        return
     if village.villagers.size() != 20:
         _fail("expected 20 initial villagers, got %d" % village.villagers.size())
         return
@@ -34,7 +38,30 @@ func _run() -> void:
         _fail("one day must equal 360 real seconds")
         return
 
-    print("SMOKE TEST PASS: main scene, player, clock, and 20 villagers loaded")
+    var first_villager = village.villagers[0]
+    if first_villager.relationships.size() < 18:
+        _fail("initial villagers should know most other villagers")
+        return
+    if village.food_security <= 0.0 or village.disease_pressure < 0.0:
+        _fail("village pressure systems were not initialized")
+        return
+
+    research_panel.glyph_states[4] = 1
+    var profile: Dictionary = research_panel.get_circle_profile()
+    if not bool(profile.get("aligned", false)):
+        _fail("healing research should align when the center uses the circle glyph")
+        return
+    if not profile.has("power") or not profile.has("range") or not profile.has("stability"):
+        _fail("magic circle profile is missing semantic puzzle statistics")
+        return
+
+    village.magic_fields["Agriculture"] = 2
+    first_villager.update_magic_knowledge(village.magic_fields)
+    if first_villager.occupation == "Farmer" and first_villager.get_work_magic_level() < 1:
+        _fail("farmers should learn agriculture magic when village knowledge exists")
+        return
+
+    print("SMOKE TEST PASS: village, relationships, pressures, and semantic magic-circle research loaded")
     instance.queue_free()
     quit(0)
 
