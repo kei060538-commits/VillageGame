@@ -31,9 +31,9 @@ func _physics_process(_delta: float) -> void:
 func _draw() -> void:
     # Placeholder witch sprite. Final build will use pixel art.
     draw_circle(Vector2(0, 3), 11.0, Color("9f72d8"))
-    draw_polygon(
+    draw_colored_polygon(
         PackedVector2Array([Vector2(-15, -7), Vector2(15, -7), Vector2(0, -31)]),
-        PackedColorArray([Color("493167")])
+        Color("493167")
     )
     draw_line(Vector2(-13, -10), Vector2(13, -10), Color("d2a7ff"), 3.0)
     draw_circle(Vector2(-4, 1), 1.5, Color.WHITE)
