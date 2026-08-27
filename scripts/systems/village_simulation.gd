@@ -1,8 +1,10 @@
 class_name VillageSimulation
 extends Node2D
 
-const WORLD_SIZE := Vector2(1600, 900)
-const TOWER_POSITION := Vector2(1430, 190)
+const WORLD_SIZE := Vector2(864, 1536)
+const TOWER_POSITION := Vector2(585, 170)
+const VISIT_SPAWN_POSITION := Vector2(430, 1015)
+const VILLAGE_ART_PATH := "res://art/village/village_night.jpg"
 
 const OCCUPATIONS := [
     "Farmer", "Farmer", "Farmer", "Farmer", "Farmer", "Farmer",
@@ -26,6 +28,7 @@ var clock: GameClock
 var event_log: VillageEventLog
 var villagers: Array[Villager] = []
 var rng := RandomNumberGenerator.new()
+var village_texture: Texture2D
 
 var magic_level := 0
 var magic_fields := {
@@ -40,25 +43,29 @@ var monster_threat := 5.0
 var food_security := 72.0
 var disease_pressure := 4.0
 
+# Coordinates now follow the approved vertical village artwork.
 var anchors := {
-    "plaza": Vector2(760, 450),
-    "food": Vector2(660, 405),
-    "tavern": Vector2(860, 420),
-    "farm": Vector2(350, 650),
-    "bakery": Vector2(650, 390),
-    "smithy": Vector2(955, 575),
-    "clinic": Vector2(620, 535),
-    "shop": Vector2(785, 355),
-    "carpenter": Vector2(1020, 390),
-    "hall": Vector2(760, 520),
-    "research": Vector2(1080, 255),
-    "forest": Vector2(1220, 680),
+    "plaza": Vector2(430, 760),
+    "food": Vector2(700, 865),
+    "tavern": Vector2(690, 1190),
+    "farm": Vector2(185, 1240),
+    "bakery": Vector2(235, 585),
+    "smithy": Vector2(700, 1190),
+    "clinic": Vector2(675, 620),
+    "shop": Vector2(710, 875),
+    "carpenter": Vector2(690, 1210),
+    "hall": Vector2(430, 770),
+    "research": TOWER_POSITION,
+    "forest": Vector2(760, 1390),
 }
 
 func setup(game_clock: GameClock, village_event_log: VillageEventLog) -> void:
     clock = game_clock
     event_log = village_event_log
     rng.seed = 913775
+    texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    if ResourceLoader.exists(VILLAGE_ART_PATH):
+        village_texture = load(VILLAGE_ART_PATH)
     clock.day_changed.connect(_on_day_changed)
     clock.years_skipped.connect(_on_years_skipped)
     _spawn_initial_population()
@@ -69,6 +76,9 @@ func setup(game_clock: GameClock, village_event_log: VillageEventLog) -> void:
 
 func get_status_summary() -> String:
     return "Food %d%%  Disease %d%%  Monsters %d%%" % [int(food_security), int(disease_pressure), int(monster_threat)]
+
+func get_visit_spawn_position() -> Vector2:
+    return VISIT_SPAWN_POSITION
 
 func interact_with_witch(villager: Villager) -> String:
     if villager == null or not is_instance_valid(villager):
@@ -119,7 +129,7 @@ func _initialize_new_villager_relationships(new_villager: Villager) -> void:
 func _home_position(index: int) -> Vector2:
     var column: int = index % 5
     var row: int = int(index / 5)
-    return Vector2(500 + column * 135, 235 + row * 135)
+    return Vector2(150 + column * 140, 900 + row * 112)
 
 func _work_position(occupation: String) -> Vector2:
     match occupation:
@@ -355,34 +365,21 @@ func _on_villager_action_changed(villager: Villager, _old_action: String, new_ac
         )
 
 func _draw() -> void:
-    draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("6f9654"))
-    draw_rect(Rect2(390, 430, 760, 48), Color("b89b71"))
-    draw_rect(Rect2(735, 160, 52, 590), Color("b89b71"))
-    draw_rect(Rect2(0, 760, 1600, 140), Color("5c91a8"))
-    draw_rect(Rect2(700, 748, 130, 36), Color("8f6848"))
+    draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("09091a"))
+    if village_texture != null:
+        draw_texture_rect(village_texture, Rect2(Vector2.ZERO, WORLD_SIZE), false)
+    else:
+        draw_rect(Rect2(Vector2.ZERO, WORLD_SIZE), Color("252746"))
 
-    for row in range(4):
-        draw_rect(Rect2(120, 555 + row * 42, 300, 28), Color("80623f"))
-
-    _draw_building(Vector2(610, 365), Vector2(90, 70), Color("d1ad78"))
-    _draw_building(Vector2(825, 385), Vector2(110, 82), Color("a86d55"))
-    _draw_building(Vector2(910, 535), Vector2(105, 78), Color("77777f"))
-    _draw_building(Vector2(570, 500), Vector2(100, 76), Color("d9d2b0"))
-    _draw_building(Vector2(735, 315), Vector2(100, 72), Color("c9a66b"))
-    _draw_building(Vector2(970, 355), Vector2(105, 72), Color("9a765e"))
-    _draw_building(Vector2(700, 485), Vector2(120, 92), Color("c7b589"))
-    _draw_building(Vector2(1035, 220), Vector2(95, 75), Color("8b779e"))
-
-    draw_circle(TOWER_POSITION, 52.0, Color("4f486d"))
-    draw_circle(TOWER_POSITION, 39.0, Color("26283e"))
-    draw_line(TOWER_POSITION + Vector2(-30, 18), TOWER_POSITION + Vector2(30, -18), Color("bda9e8"), 4.0)
-    draw_line(TOWER_POSITION + Vector2(-30, -18), TOWER_POSITION + Vector2(30, 18), Color("bda9e8"), 4.0)
-
-func _draw_building(center: Vector2, size: Vector2, color: Color) -> void:
-    draw_rect(Rect2(center - size * 0.5, size), color)
-    var roof := PackedVector2Array([
-        center + Vector2(-size.x * 0.6, -size.y * 0.45),
-        center + Vector2(size.x * 0.6, -size.y * 0.45),
-        center + Vector2(0, -size.y * 0.85),
-    ])
-    draw_colored_polygon(roof, Color("644b43"))
+    # The concept image originally contains a showcase witch at this location.
+    # Cover it with an in-world arrival seal so the live animated player owns the space.
+    var seal_center := VISIT_SPAWN_POSITION
+    draw_circle(seal_center, 72.0, Color(0.035, 0.025, 0.09, 0.96))
+    draw_arc(seal_center, 61.0, 0.0, TAU, 64, Color("9a61ff"), 3.0, true)
+    draw_arc(seal_center, 48.0, 0.0, TAU, 64, Color("dcb56f"), 1.8, true)
+    for ray in range(8):
+        var angle := TAU * float(ray) / 8.0
+        var inner := seal_center + Vector2(cos(angle), sin(angle)) * 28.0
+        var outer := seal_center + Vector2(cos(angle), sin(angle)) * 56.0
+        draw_line(inner, outer, Color("b891ff"), 1.8, true)
+    draw_circle(seal_center, 5.0, Color("ece7ff"))
