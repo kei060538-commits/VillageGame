@@ -7,8 +7,8 @@ const MAGIC_VISUAL := preload("res://scripts/ui/magic_circle_visual.gd")
 
 const GLYPH_NAMES := ["Empty", "Circle", "Triangle", "Square", "Diamond", "Star"]
 const GLYPH_JP := ["空", "円", "三角", "四角", "菱形", "星"]
-const ORIENTATION_NAMES := ["OUT", "CLOCKWISE", "IN", "COUNTER"]
-const ORIENTATION_JP := ["外向", "順流", "内向", "逆流"]
+const ORIENTATION_NAMES := ["OUT", "OUT / CW", "CLOCKWISE", "IN / CW", "IN", "IN / CCW", "COUNTER", "OUT / CCW"]
+const ORIENTATION_JP := ["外向", "外・順流", "順流", "内・順流", "内向", "内・逆流", "逆流", "外・逆流"]
 const FIELDS := ["Healing", "Agriculture", "Construction", "Weather", "Combat"]
 const FIELD_CORE := {
     "Healing": 1,
@@ -270,7 +270,7 @@ func _build_glyph_picker() -> void:
     box.add_child(rotate_row)
 
     var rotate_left := Button.new()
-    rotate_left.text = _ui("左へ90°", "ROTATE -90")
+    rotate_left.text = _ui("左へ45°", "ROTATE -45")
     rotate_left.custom_minimum_size = Vector2(160, 48)
     rotate_left.focus_mode = Control.FOCUS_NONE
     rotate_left.add_theme_font_size_override("font_size", 15)
@@ -286,7 +286,7 @@ func _build_glyph_picker() -> void:
     rotate_row.add_child(rotation_label)
 
     var rotate_right := Button.new()
-    rotate_right.text = _ui("右へ90°", "ROTATE +90")
+    rotate_right.text = _ui("右へ45°", "ROTATE +45")
     rotate_right.custom_minimum_size = Vector2(160, 48)
     rotate_right.focus_mode = Control.FOCUS_NONE
     rotate_right.add_theme_font_size_override("font_size", 15)
@@ -362,17 +362,29 @@ func get_circle_profile() -> Dictionary:
             stability += int(GLYPH_STABILITY[state])
             efficiency += int(GLYPH_EFFICIENCY[state])
 
-        var orientation: int = glyph_rotations[i] % 4
+        var orientation: int = glyph_rotations[i] % 8
         match orientation:
             0:
                 reach += 1
             1:
+                reach += 1
                 duration += 1
             2:
+                duration += 1
+            3:
+                duration += 1
+                stability += 1
+            4:
                 stability += 1
                 efficiency += 1
-            3:
+            5:
+                stability += 1
                 power += 1
+            6:
+                power += 1
+            7:
+                power += 1
+                reach += 1
 
     var active_links := 0
     for link in connections:
@@ -451,10 +463,10 @@ func _rotate_selected(step: int) -> void:
         return
 
     var slot: int = selected_slot
-    glyph_rotations[slot] = (glyph_rotations[slot] + step + 4) % 4
+    glyph_rotations[slot] = (glyph_rotations[slot] + step + 8) % 8
     selected_slot = -1
     glyph_picker.visible = false
-    status_label.text = _ui("紋章の向きを変更した。", "GLYPH ORIENTATION CHANGED.")
+    status_label.text = _ui("紋章を45°回転した。", "GLYPH ROTATED 45 DEGREES.")
     _refresh_profile()
     _sync_circle_visual()
     _refresh_slot_styles()
@@ -726,8 +738,8 @@ func _refresh_picker_styles() -> void:
             rotation_label.text = _ui("向き: --", "ORIENT: --")
         else:
             rotation_label.text = _ui(
-                "向き: %s" % ORIENTATION_JP[glyph_rotations[selected_slot] % 4],
-                "ORIENT: %s" % ORIENTATION_NAMES[glyph_rotations[selected_slot] % 4]
+                "向き: %s" % ORIENTATION_JP[glyph_rotations[selected_slot] % 8],
+                "ORIENT: %s" % ORIENTATION_NAMES[glyph_rotations[selected_slot] % 8]
             )
 
 func _circle_local_position(viewport_position: Vector2) -> Vector2:
@@ -770,10 +782,10 @@ func _is_corner(index: int) -> bool:
 
 func _slot_tooltip(index: int) -> String:
     if index == 4:
-        return _ui("中心核: 魔法分野と主出力。回転で流れを調整し、他の紋章へドラッグして接続する。", "Core: magic field and main output. Rotate it or drag to another glyph to wire it.")
+        return _ui("中心核: 魔法分野と主出力。45°刻みの回転で流れを調整し、他の紋章へドラッグして接続する。", "Core: magic field and main output. Rotate in 45-degree steps or drag to another glyph to wire it.")
     if _is_corner(index):
-        return _ui("境界紋: 主に範囲と封じ込め。回転と魔力線で性能が変わる。", "Boundary: mainly range and containment. Rotation and links change its behavior.")
-    return _ui("導流紋: 主に出力、持続、魔力流。別の紋章へドラッグして接続する。", "Flow: mainly power, duration and mana flow. Drag it to another glyph to connect.")
+        return _ui("境界紋: 主に範囲と封じ込め。45°刻みの回転と魔力線で性能が変わる。", "Boundary: mainly range and containment. 45-degree rotation and links change its behavior.")
+    return _ui("導流紋: 主に出力、持続、魔力流。45°刻みで向きを変え、別の紋章へドラッグして接続する。", "Flow: mainly power, duration and mana flow. Rotate in 45-degree steps and drag to another glyph to connect.")
 
 func _glyph_name(state: int) -> String:
     if state < 0 or state >= GLYPH_NAMES.size():
@@ -813,14 +825,14 @@ func _glyph_style(index: int, highlighted: bool, selected: bool = false) -> Styl
         bg = Color("2d2454")
     if selected:
         bg = Color("38295f")
-    bg.a = 0.94
+    bg.a = 0.62 if selected else (0.50 if highlighted else 0.34)
     var linked: bool = _slot_connection_count(index) > 0
-    var border_alpha: float = 1.0 if selected or highlighted or linked else 0.55
+    var border_alpha: float = 1.0 if selected or highlighted or linked else 0.68
     var border: Color = Color(role_color, border_alpha)
     var width: int = 3 if selected else (2 if highlighted or linked else 1)
     var style := _panel_style(bg, border, 41, width)
-    style.shadow_color = Color(role_color, 0.40 if selected else (0.34 if highlighted or linked else 0.18))
-    style.shadow_size = 12 if selected else (10 if highlighted or linked else 5)
+    style.shadow_color = Color(role_color, 0.48 if selected else (0.40 if highlighted or linked else 0.24))
+    style.shadow_size = 14 if selected else (11 if highlighted or linked else 7)
     return style
 
 func _picker_style(active: bool, highlighted: bool) -> StyleBoxFlat:
