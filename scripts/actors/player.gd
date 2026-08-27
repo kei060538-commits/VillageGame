@@ -14,6 +14,7 @@ var walk_timer := 0.0
 var walk_frame := 1
 
 func _ready() -> void:
+    position = VillageSimulation.VISIT_SPAWN_POSITION
     _build_sprite()
     queue_redraw()
 
