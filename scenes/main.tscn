@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/ui/village_visit_controller.gd" id="2_village_visit"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
+
+[node name="VillageVisitController" type="Node" parent="."]
+script = ExtResource("2_village_visit")
