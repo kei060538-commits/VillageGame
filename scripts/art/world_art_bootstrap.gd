@@ -1,6 +1,7 @@
 extends Node
 
-const WITCH_VISUAL := preload("res://scripts/art/witch_world_visual.gd")
+const WITCH_FALLBACK_VISUAL := preload("res://scripts/art/witch_world_visual.gd")
+const WITCH_SPRITE_VISUAL := preload("res://scripts/art/witch_sprite_visual.gd")
 
 var main_node: Node2D
 var village: VillageSimulation
@@ -49,7 +50,8 @@ func _attach_village_background() -> void:
     village.add_child(backdrop)
     village.move_child(backdrop, 0)
 
-    # Mask the baked showcase witch so only the controllable player appears there.
+    # The concept art contains a static showcase witch. Cover that location with
+    # an arrival seal so the live controllable Lumina sprite owns the foreground.
     var seal := ArrivalSeal.new()
     seal.name = "ArrivalSeal"
     seal.position = VillageSimulation.VISIT_SPAWN_POSITION
@@ -58,10 +60,19 @@ func _attach_village_background() -> void:
     village.move_child(seal, mini(1, village.get_child_count() - 1))
 
 func _attach_witch_visual() -> void:
+    # Hide WitchPlayer's old emergency drawing without hiding its children.
     player.self_modulate = Color(1, 1, 1, 0)
-    var visual := WITCH_VISUAL.new()
-    visual.name = "WitchVisual"
-    player.add_child(visual)
+
+    var approved_texture := WitchArtData.get_texture()
+    if approved_texture != null:
+        var sprite := WITCH_SPRITE_VISUAL.new()
+        sprite.name = "LuminaSprite"
+        player.add_child(sprite)
+        return
+
+    var fallback := WITCH_FALLBACK_VISUAL.new()
+    fallback.name = "WitchVisualFallback"
+    player.add_child(fallback)
 
 class ArrivalSeal:
     extends Node2D
