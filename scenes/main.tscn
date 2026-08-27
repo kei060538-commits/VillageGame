@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/ui/village_visit_controller.gd" id="2_village_visit"]
+[ext_resource type="Script" path="res://scripts/art/world_art_bootstrap.gd" id="3_world_art"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="VillageVisitController" type="Node" parent="."]
+script = ExtResource("2_village_visit")
+
+[node name="WorldArtBootstrap" type="Node" parent="."]
+script = ExtResource("3_world_art")

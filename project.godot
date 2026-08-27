@@ -4,20 +4,35 @@
 ;
 ; Format:
 ;   [section] ; section goes between []
-;   param=value ; assign values to parameters
+;   param=value
 
 config_version=5
 
 [application]
 
 config/name="VillageGame"
+config/version="0.1.0"
+run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
+[autoload]
+
+UIFont="*res://scripts/core/web_font_bootstrap.gd"
+
 [display]
 
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/window_width_override=540
+window/size/window_height_override=960
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/handheld/orientation=5
+window/ios/allow_high_refresh_rate=false
+window/ios/hide_home_indicator=true
+window/ios/hide_status_bar=true
+window/ios/suppress_ui_gesture=true
 
 [physics]
 
@@ -28,3 +43,4 @@ window/stretch/aspect="expand"
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
